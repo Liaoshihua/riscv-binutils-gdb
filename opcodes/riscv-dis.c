@@ -258,6 +258,24 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 	      print (info->stream, "%s",
 		     riscv_fpr_names[EXTRACT_OPERAND (CRS2S, l) + 8]);
 	      break;
+	    case 'Z': /* ZCE 16 bits length instruction field*/
+		  switch (*++d)
+		    {
+		  case 'b':
+		    print (info->stream, "%d", (int)EXTRACT_ZCE_LBU_IMM (l));
+		    break;
+		  case 'd':
+		    info->target = pc - EXTRACT_ZCE_C_DECBNEZ_IMM (l);
+		    (*info->print_address_func) (info->target, info);
+		    break;
+		  case 'h':
+		    print (info->stream, "%d", (int)EXTRACT_ZCE_LHU_IMM (l));
+		    break;
+		  case 's':
+		    print (info->stream, "%d", 1 << (int)EXTRACT_ZCE_C_DECBNEZ_SCALE (l));
+		    break;
+		    }
+	    break;
 	    }
 	  break;
 
@@ -292,6 +310,24 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 		 (unsigned)EXTRACT_UTYPE_IMM (l) >> RISCV_IMM_BITS);
 	  break;
 
+	case 'n': /* ZCE 32 bits length instruction field */
+	  switch (*++d)
+	    {
+	    case 'l':
+	      print (info->stream, "%d", (int)EXTRACT_ZCE_LWGP_IMM (l));
+	      break;
+	    case 's':
+	      print (info->stream, "%d", (int)EXTRACT_ZCE_SWGP_IMM (l));
+	      break;
+	    case 'S':
+	      print (info->stream, "%d", 1 << (int)EXTRACT_ZCE_DECBNEZ_SCALE (l));
+	      break;
+	    case 'd':
+	      info->target = EXTRACT_ZCE_DECBNEZ_IMM (l) + pc;
+	      (*info->print_address_func) (info->target, info);
+	      break;
+	    }
+	  break;
 	case 'm':
 	  arg_print (info, EXTRACT_OPERAND (RM, l),
 		     riscv_rm, ARRAY_SIZE (riscv_rm));

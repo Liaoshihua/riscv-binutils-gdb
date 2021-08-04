@@ -852,6 +852,19 @@ const struct riscv_opcode riscv_opcodes[] =
 {"c.zext.w",  64, INSN_CLASS_ZCEE,  "Cs",  MATCH_C_ZEXT_W, MASK_C_ZEXT_W, match_opcode, 0 },
 {"c.mul",     0,  INSN_CLASS_ZCEE,  "Cs,Ct",  MATCH_C_MUL, MASK_C_MUL, match_opcode, 0 },
 
+{"c.decbnez",  0,  INSN_CLASS_ZCEB, "Cs,CZs,CZd", MATCH_C_DECBNEZ, MASK_C_DECBNEZ, match_opcode, INSN_CONDBRANCH },
+{"decbnez",    0,  INSN_CLASS_ZCEB, "d,nS,nd",  MATCH_DECBNEZ, MASK_DECBNEZ, match_opcode, INSN_CONDBRANCH },
+{"lwgp",       0,  INSN_CLASS_ZCEB, "d,nl",  MATCH_FLD, MASK_LWGP, match_opcode, INSN_DREF|INSN_4_BYTE },
+{"swgp",       0,  INSN_CLASS_ZCEB, "t,ns",  MATCH_FSD, MASK_SWGP, match_opcode, INSN_DREF|INSN_4_BYTE },
+{"ldgp",       64, INSN_CLASS_ZCEB, "d,nl",  MATCH_LDGP, MASK_LDGP, match_opcode, INSN_DREF|INSN_8_BYTE },
+{"sdgp",       64, INSN_CLASS_ZCEB, "t,ns",  MATCH_SDGP, MASK_SDGP, match_opcode, INSN_DREF|INSN_8_BYTE },
+{"c.lbu",      0,  INSN_CLASS_ZCEB, "Ct,CZb(Cs)", MATCH_C_LBU, MASK_C_LBU, match_opcode, INSN_DREF|INSN_1_BYTE },
+{"c.lhu",      0,  INSN_CLASS_ZCEB, "Ct,CZh(Cs)", MATCH_C_LHU, MASK_C_LHU, match_opcode, INSN_DREF|INSN_2_BYTE },
+{"c.lb",       0,  INSN_CLASS_ZCEB, "Ct,CZb(Cs)", MATCH_C_LB, MASK_C_LB, match_opcode, INSN_DREF|INSN_1_BYTE },
+{"c.lh",       0,  INSN_CLASS_ZCEB, "Ct,CZh(Cs)", MATCH_C_LH, MASK_C_LH, match_opcode, INSN_DREF|INSN_2_BYTE },
+{"c.sb",       0,  INSN_CLASS_ZCEB, "Ct,CZb(Cs)", MATCH_C_SB, MASK_C_SB, match_opcode, INSN_DREF|INSN_1_BYTE },
+{"c.sh",       0,  INSN_CLASS_ZCEB, "Ct,CZh(Cs)", MATCH_C_SH, MASK_C_SH, match_opcode, INSN_DREF|INSN_2_BYTE },
+
 /* Terminate the list.  */
 {0, 0, INSN_CLASS_NONE, 0, 0, 0, 0, 0}
 };

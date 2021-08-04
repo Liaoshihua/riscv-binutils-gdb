@@ -1047,6 +1047,20 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 	  case 'l': used_bits |= ENCODE_CLTYPE_LD_IMM (-1U); break;
 	  case 'p': used_bits |= ENCODE_CBTYPE_IMM (-1U); break;
 	  case 'a': used_bits |= ENCODE_CJTYPE_IMM (-1U); break;
+	  case 'Z': /* ZCE  */
+	    switch (c = *p++)
+	      {
+		case 'h': used_bits |= ENCODE_ZCE_LHU_IMM (-1U); break;
+		case 'b': used_bits |= ENCODE_ZCE_LBU_IMM (-1U); break;
+		case 'd': used_bits |= ENCODE_ZCE_C_DECBNEZ_IMM (-1U); break;
+		case 's': used_bits |= ENCODE_ZCE_C_DECBNEZ_SCALE (-1U); break;
+		default:
+		  as_bad (_("internal: bad RISC-V opcode "
+			    "(unknown operand type `CZ%c'): %s %s"),
+			  c, opc->name, opc->args);
+		  return FALSE;
+	      }
+	    break;
 	  case 'F': /* Compressed funct for .insn directive.  */
 	    switch (c = *p++)
 	      {
@@ -1065,6 +1079,20 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 	    as_bad (_("internal: bad RISC-V opcode "
 		      "(unknown operand type `C%c'): %s %s"),
 		    c, opc->name, opc->args);
+	    return FALSE;
+	  }
+	break;
+      case 'n': /* ZCE  */
+	switch (c = *p++)
+	  {
+	    case 'l': used_bits |= ENCODE_ZCE_LWGP_IMM (-1U); break;
+	    case 's': used_bits |= ENCODE_ZCE_SWGP_IMM (-1U); break;
+	    case 'S': used_bits |= ENCODE_ZCE_DECBNEZ_SCALE (-1U); break;
+	    case 'd': used_bits |= ENCODE_ZCE_DECBNEZ_IMM (-1U); break;
+	    default:
+	      as_bad (_("internal: bad RISC-V opcode "
+			"(unknown operand type `n%c'): %s %s"),
+		      c, opc->name, opc->args);
 	    return FALSE;
 	  }
 	break;
@@ -2271,7 +2299,54 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		    break;
 		  INSERT_OPERAND (CRS2, *ip, regno);
 		  continue;
-		case 'F':
+		case 'Z':
+		  switch (*++args)
+		    {
+		  case 'h':
+		    if (riscv_handle_implicit_zero_offset (imm_expr, s))
+		        continue;
+		    if (my_getSmallExpression (imm_expr, imm_reloc, s, p)
+		        || imm_expr->X_op != O_constant
+		        || !VALID_ZCE_LHU_IMM ((valueT) imm_expr->X_add_number))
+		      break;
+		    ip->insn_opcode |= ENCODE_ZCE_LHU_IMM (imm_expr->X_add_number);
+		    goto rvc_imm_done;
+		  case 'b':
+		    if (riscv_handle_implicit_zero_offset (imm_expr, s))
+		        continue;
+		    if (my_getSmallExpression (imm_expr, imm_reloc, s, p)
+		        || imm_expr->X_op != O_constant
+		        || !VALID_ZCE_LBU_IMM ((valueT) imm_expr->X_add_number))
+		      break;
+		    ip->insn_opcode |= ENCODE_ZCE_LBU_IMM (imm_expr->X_add_number);
+		    goto rvc_imm_done;
+		  case 'd':
+		    *imm_reloc = BFD_RELOC_12_PCREL;
+		    my_getExpression (imm_expr, s);
+		    s = expr_end;
+		    imm_expr->X_add_number = -imm_expr->X_add_number;
+		    continue;
+		  case 's':
+		    if (my_getSmallExpression (imm_expr, imm_reloc, s, p)
+		        || imm_expr->X_op != O_constant
+		        || !(imm_expr->X_add_number == 1
+		          || imm_expr->X_add_number == 2
+		          || imm_expr->X_add_number == 4
+		          || imm_expr->X_add_number == 8)
+		        || !VALID_ZCE_C_DECBNEZ_SCALE ((valueT) imm_expr->X_add_number))
+		      break;
+		    imm_expr->X_add_number =
+			  imm_expr->X_add_number == 8 ? 0b11 : imm_expr->X_add_number >> 1;
+		    ip->insn_opcode |= ENCODE_ZCE_C_DECBNEZ_SCALE (imm_expr->X_add_number);
+		    imm_expr->X_op = O_absent;
+		    s = expr_end;
+		    goto rvc_imm_done;
+		  default:
+		    as_bad (_("internal: unknown ZCE field specifier"
+		        "field specifier `CZ%c'"), *args);
+		    }
+		  break;
+    case 'F':
 		  switch (*++args)
 		    {
 		      case '6':
@@ -2411,6 +2486,53 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		  s = expr_end;
 		}
 	      continue;
+
+	  case 'n':
+		  switch (*++args)
+		{
+		case 'l':
+		  my_getExpression (imm_expr, s);
+		  if (imm_expr->X_op != O_constant)
+		    break;
+		  ip->insn_opcode |= ENCODE_ZCE_LWGP_IMM (imm_expr->X_add_number);
+		  s = expr_end;
+		  imm_expr->X_op = O_absent;
+		  continue;
+		case 's':
+		  my_getExpression (imm_expr, s);
+		  if (imm_expr->X_op != O_constant)
+		    break;
+		  ip->insn_opcode |= ENCODE_ZCE_SWGP_IMM (imm_expr->X_add_number);
+		  s = expr_end;
+		  imm_expr->X_op = O_absent;
+		  continue;
+		case 'h':
+		  my_getExpression (imm_expr, s);
+		  if (imm_expr->X_op != O_constant)
+		    break;
+		  ip->insn_opcode |= ENCODE_ZCE_LHU_IMM (imm_expr->X_add_number);
+		  s = expr_end;
+		  imm_expr->X_op = O_absent;
+		  continue;
+		case 'S':
+		  my_getExpression (imm_expr, s);
+		  if (imm_expr->X_op != O_constant
+		    || !(imm_expr->X_add_number == 1
+		      || imm_expr->X_add_number == 2
+		      || imm_expr->X_add_number == 4
+		      || imm_expr->X_add_number == 8))
+		    break;
+		  ip->insn_opcode |= ENCODE_ZCE_DECBNEZ_SCALE (imm_expr->X_add_number);
+		  s = expr_end;
+		  imm_expr->X_op = O_absent;
+		  continue;
+		case 'd':
+		  goto branch;
+		default:
+			as_bad (_("internal: unknown ZCE 32 bits instruction"
+					"field specifier `n%c'"), *args);
+		break;
+		}
 
 	    case 'm': /* Rounding mode.  */
 	      if (arg_lookup (&s, riscv_rm, ARRAY_SIZE (riscv_rm), &regno))
