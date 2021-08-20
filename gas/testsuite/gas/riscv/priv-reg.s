@@ -256,6 +256,10 @@
 
 	# Unprivileged CSR which are not controlled by privilege spec.
 
+        # Smepmp
+        csr mseccfg             # 0x747, RV64 or low 32bits on RV32
+        csr mseccfgh            # 0x757, high 32bits on RV32
+
 	# Float
 	csr fflags
 	csr frm

@@ -26,3 +26,4 @@
 .*Warning: invalid CSR `pmpaddr14' for the privileged spec `1.9.1'
 .*Warning: invalid CSR `pmpaddr15' for the privileged spec `1.9.1'
 .*Warning: invalid CSR `mcountinhibit' for the privileged spec `1.9.1'
+.*Warning: invalid CSR `mseccfgh' for the privileged spec `1.9.1'

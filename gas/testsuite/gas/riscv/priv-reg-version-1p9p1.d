@@ -244,6 +244,8 @@ Disassembly of section .text:
 [     	]+[0-9a-f]+:[  	]+38502573[    	]+csrr[        	]+a0,mdbound
 [     	]+[0-9a-f]+:[  	]+32102573[    	]+csrr[        	]+a0,mscounteren
 [     	]+[0-9a-f]+:[  	]+32202573[    	]+csrr[        	]+a0,mhcounteren
+[     	]+[0-9a-f]+:[  	]+74702573[    	]+csrr[        	]+a0,mseccfg
+[     	]+[0-9a-f]+:[  	]+75702573[    	]+csrr[        	]+a0,mseccfgh
 [     	]+[0-9a-f]+:[  	]+00102573[    	]+frflags[     	]+a0
 [     	]+[0-9a-f]+:[  	]+00202573[    	]+frrm[        	]+a0
 [     	]+[0-9a-f]+:[  	]+00302573[    	]+frcsr[       	]+a0

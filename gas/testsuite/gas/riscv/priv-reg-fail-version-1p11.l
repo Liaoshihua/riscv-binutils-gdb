@@ -22,3 +22,4 @@
 .*Warning: invalid CSR `mdbound' for the privileged spec `1.11'
 .*Warning: invalid CSR `mscounteren' for the privileged spec `1.11'
 .*Warning: invalid CSR `mhcounteren' for the privileged spec `1.11'
+.*Warning: invalid CSR `mseccfgh' for the privileged spec `1.11'
