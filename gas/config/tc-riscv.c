@@ -155,6 +155,10 @@ static const struct riscv_ext_version ext_version_table[] =
   {"zksh",  ISA_SPEC_CLASS_DRAFT, 1, 0},
   {"zkt",   ISA_SPEC_CLASS_DRAFT, 1, 0},
 
+  {"zpn",   ISA_SPEC_CLASS_DRAFT, 0, 94},
+  {"zprv",  ISA_SPEC_CLASS_DRAFT, 0, 94},
+  {"zpsf",  ISA_SPEC_CLASS_DRAFT, 0, 94},
+
   /* Terminate the list.  */
   {NULL, 0, 0, 0}
 };
@@ -374,10 +378,40 @@ riscv_multi_subset_supports (enum riscv_insn_class insn_class)
     case INSN_CLASS_ZKSH:
       return riscv_subset_supports ("zksh");
 
+    case INSN_CLASS_ZPN:
+      return riscv_subset_supports ("zpn");
+    case INSN_CLASS_ZPRV:
+      return riscv_subset_supports ("zprv");
+    case INSN_CLASS_ZPSF:
+      return riscv_subset_supports ("zpsf");
+
     default:
       as_fatal ("internal: unreachable");
       return FALSE;
     }
+}
+
+#define RVP_MAX_KEYWORD_LEN 32
+
+static bfd_boolean
+parse_rvp_field (const char **str, char name[RVP_MAX_KEYWORD_LEN])
+{
+  char *p = name;
+  const char *str_t;
+
+  str_t = *str;
+  str_t--;
+  while (ISALNUM (*str_t) || *str_t == '.' || *str_t == '_')
+    *p++ = *str_t++;
+  *p = '\0';
+
+  if (strncmp (name, "nds_", 4) == 0)
+    {
+      *str = str_t;
+      return TRUE;
+    }
+  else
+    return FALSE;
 }
 
 /* Handle of the extension with version hash table.  */
@@ -1106,6 +1140,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
       case 'Z': /* RS1, CSR number.  */
       case 'S': /* RS1, floating point.  */
       case 's': USE_BITS (OP_MASK_RS1, OP_SH_RS1); break;
+      case 'g': /* RS1 and RS2 are the same. */
       case 'U': /* RS1 and RS2 are the same, floating point.  */
 	USE_BITS (OP_MASK_RS1, OP_SH_RS1);
 	/* Fall through.  */
@@ -1118,6 +1153,7 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
       case 'P': USE_BITS (OP_MASK_PRED, OP_SH_PRED); break;
       case 'Q': USE_BITS (OP_MASK_SUCC, OP_SH_SUCC); break;
       case 'o': /* ITYPE immediate, load displacement.  */
+      case 'l': /* IMM6L */
       case 'j': used_bits |= ENCODE_ITYPE_IMM (-1U); break;
       case 'a': used_bits |= ENCODE_JTYPE_IMM (-1U); break;
       case 'p': used_bits |= ENCODE_BTYPE_IMM (-1U); break;
@@ -1153,6 +1189,38 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 	     return FALSE;
 	  }
 	break;
+      case 'n':
+      {
+        char field_name[RVP_MAX_KEYWORD_LEN];
+        if (parse_rvp_field (&p, field_name))
+          {
+            if (strcmp (field_name, "nds_rc") == 0)
+        USE_BITS (OP_MASK_RC, OP_SH_RC);
+            else if (strcmp (field_name, "nds_rdp") == 0)
+        USE_BITS (OP_MASK_RD, OP_SH_RD);
+            else if (strcmp (field_name, "nds_rsp") == 0)
+        USE_BITS (OP_MASK_RD, OP_SH_RS1);
+            else if (strcmp (field_name, "nds_rtp") == 0)
+        USE_BITS (OP_MASK_RD, OP_SH_RS2);
+            else if (strcmp (field_name, "nds_i3u") == 0)
+        used_bits |= ENCODE_PTYPE_IMM3U (-1U);
+            else if (strcmp (field_name, "nds_i4u") == 0)
+        used_bits |= ENCODE_PTYPE_IMM4U (-1U);
+            else if (strcmp (field_name, "nds_i5u") == 0)
+        used_bits |= ENCODE_PTYPE_IMM5U (-1U);
+            else if (strcmp (field_name, "nds_i6u") == 0)
+        used_bits |= ENCODE_PTYPE_IMM6U (-1U);
+            else
+        as_bad (_("internal: bad RISC-V opcode "
+            "(unknown operand type `%s'): %s %s"),
+          field_name, opc->name, opc->args);
+          }
+        else
+          as_bad (_("internal: bad RISC-V opcode "
+              "(unknown operand type `%c'): %s %s"),
+            c, opc->name, opc->args);
+      }
+      break;
       default:
 	as_bad (_("internal: bad RISC-V opcode "
 		  "(unknown operand type `%c'): %s %s"),
@@ -2437,6 +2505,17 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		}
 	      continue;
 
+	    case 'l':
+	      my_getExpression (imm_expr, s);
+	      if (imm_expr->X_op != O_constant
+	      || imm_expr->X_add_number >= xlen
+	      || imm_expr->X_add_number < 0)
+	        break;
+	      ip->insn_opcode |= ENCODE_ITYPE_IMM6L (imm_expr->X_add_number);
+	      s = expr_end;
+	      imm_expr->X_op = O_absent;
+	      continue;
+
 	    case 'm': /* Rounding mode.  */
 	      if (arg_lookup (&s, riscv_rm, ARRAY_SIZE (riscv_rm), &regno))
 		{
@@ -2444,6 +2523,88 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		  continue;
 		}
 	      break;
+
+      	    case 'n':
+	      {
+		char field_name[RVP_MAX_KEYWORD_LEN];
+		args++;
+		if (parse_rvp_field (&args, field_name))
+		  {
+		    if (strcmp (field_name, "nds_rc") == 0
+			&& reg_lookup (&s, RCLASS_GPR, &regno))
+		      {
+			INSERT_OPERAND (RC, *ip, regno);
+			args--;
+			continue;
+		      }
+		    else if (strcmp (field_name, "nds_rdp") == 0
+			     && reg_lookup (&s, RCLASS_GPR, &regno))
+		      {
+			if (xlen == 32 && (regno % 2) != 0)
+			  {
+			    as_bad (_("the number of Rd must be even "
+				      "(limitation of register pair)"));
+			    break;
+			  }
+			INSERT_OPERAND (RD, *ip, regno);
+			args--;
+			continue;
+		      }
+		    else if (strcmp (field_name, "nds_rsp") == 0
+			     && reg_lookup (&s, RCLASS_GPR, &regno))
+		      {
+			if (xlen == 32 && (regno % 2) != 0)
+			  {
+			    as_bad (_("the number of Rs1 must be even "
+				      "(limitation of register pair)"));
+			    break;
+			  }
+			INSERT_OPERAND (RS1, *ip, regno);
+			args--;
+			continue;
+		      }
+		    else if (strcmp (field_name, "nds_rtp") == 0
+			     && reg_lookup (&s, RCLASS_GPR, &regno))
+		      {
+			if (xlen == 32 && (regno % 2) != 0)
+			  {
+			    as_bad (_("the number of Rs2 must be even "
+				      "(limitation of register pair)"));
+			    break;
+			  }
+			INSERT_OPERAND (RS2, *ip, regno);
+			args--;
+			continue;
+		      }
+
+		    my_getExpression (imm_expr, s);
+		    if (imm_expr->X_op != O_constant
+			|| imm_expr->X_add_number >= xlen
+			|| imm_expr->X_add_number < 0)
+		      break;
+
+		    if (strcmp (field_name, "nds_i3u") == 0
+			&& VALID_PTYPE_IMM3U (imm_expr->X_add_number))
+		      ip->insn_opcode |= ENCODE_PTYPE_IMM3U (imm_expr->X_add_number);
+		    else if (strcmp (field_name, "nds_i4u") == 0
+			     && VALID_PTYPE_IMM4U (imm_expr->X_add_number))
+		      ip->insn_opcode |= ENCODE_PTYPE_IMM4U (imm_expr->X_add_number);
+		    else if (strcmp (field_name, "nds_i5u") == 0
+			     && VALID_PTYPE_IMM5U (imm_expr->X_add_number))
+		      ip->insn_opcode |= ENCODE_PTYPE_IMM5U (imm_expr->X_add_number);
+		    else if (strcmp (field_name, "nds_i6u") == 0
+			     && VALID_PTYPE_IMM6U (imm_expr->X_add_number))
+		      ip->insn_opcode |= ENCODE_PTYPE_IMM6U (imm_expr->X_add_number);
+		    else
+		      break;
+
+		    s = expr_end;
+		    imm_expr->X_op = O_absent;
+		    args--;
+		    continue;
+		  }
+		break;
+	      }
 
 	    case 'P':
 	    case 'Q': /* Fence predecessor/successor.  */
@@ -2460,6 +2621,7 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 
 	    case 'd': /* Destination register.  */
 	    case 's': /* Source register.  */
+	    case 'g': /* RS1 and RS2. */
 	    case 't': /* Target register.  */
 	    case 'r': /* RS3 */
 	      if (reg_lookup (&s, RCLASS_GPR, &regno))
@@ -2478,6 +2640,9 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		    case 'd':
 		      INSERT_OPERAND (RD, *ip, regno);
 		      break;
+		    case 'g':
+		      INSERT_OPERAND (RS1, *ip, regno);
+		      /* Fall through.  */
 		    case 't':
 		      INSERT_OPERAND (RS2, *ip, regno);
 		      break;

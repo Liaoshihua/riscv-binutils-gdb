@@ -1600,7 +1600,7 @@ static const char * const riscv_std_z_ext_strtab[] =
 {
   "zicsr", "zifencei", "zihintpause", "zba", "zbb", "zbc", "zbkb", "zbkc",
   "zbkx", "zbs", "zkn", "zknd", "zkne", "zknh", "zkr", "zks", "zksed", "zksh",
-  "zkt",
+  "zkt", "zpn", "zprv", "zpsf",
   NULL
 };
 
@@ -1874,6 +1874,14 @@ riscv_parse_subset (riscv_parse_subset_t *rps,
       rps->error_handler
 	(_("-march=%s: rv32 does not support the `q' extension"),
 	 arch);
+      no_conflict = FALSE;
+    }
+  if (riscv_lookup_subset (rps->subset_list, "zprv", &subset)
+      && *rps->xlen < 64)
+    {
+      rps->error_handler
+        (_("-march=%s: rv32 does not support the `zprv' extension"),
+         arch);
       no_conflict = FALSE;
     }
   return no_conflict;
