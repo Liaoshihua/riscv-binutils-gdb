@@ -272,7 +272,13 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 		    print (info->stream, "%d", (int)EXTRACT_ZCE_LHU_IMM (l));
 		    break;
 		  case 's':
-		    print (info->stream, "%d", 1 << (int)EXTRACT_ZCE_C_DECBNEZ_SCALE (l));
+		    switch ((int)EXTRACT_ZCE_C_DECBNEZ_SCALE (l))
+		    {
+		      case 0b00: print (info->stream, "%d", 1); break;
+		      case 0b01: print (info->stream, "%d", 2); break;
+		      case 0b10: print (info->stream, "%d", 4); break;
+		      case 0b11: print (info->stream, "%d", 8); break;
+		    }
 		    break;
 		    }
 	    break;
@@ -320,10 +326,16 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 	      print (info->stream, "%d", (int)EXTRACT_ZCE_SWGP_IMM (l));
 	      break;
 	    case 'S':
-	      print (info->stream, "%d", 1 << (int)EXTRACT_ZCE_DECBNEZ_SCALE (l));
+		  switch ((int)EXTRACT_ZCE_DECBNEZ_SCALE (l))
+		  {
+		    case 0b00: print (info->stream, "%d", 1); break;
+		    case 0b01: print (info->stream, "%d", 2); break;
+		    case 0b10: print (info->stream, "%d", 4); break;
+		    case 0b11: print (info->stream, "%d", 8); break;
+		  }
 	      break;
 	    case 'd':
-	      info->target = EXTRACT_ZCE_DECBNEZ_IMM (l) + pc;
+	      info->target = pc + EXTRACT_ZCE_DECBNEZ_IMM (l);
 	      (*info->print_address_func) (info->target, info);
 	      break;
 	    }

@@ -1,4 +1,4 @@
-#as: -march=rv32gc_zceb
+#as: -march=rv32ic_zceb
 #source: insn-zceb-32.s
 #objdump: -dr
 

@@ -871,6 +871,36 @@ static reloc_howto_type howto_table[] =
 	 0,				/* src_mask */
 	 0xffffffff,			/* dst_mask */
 	 FALSE),			/* pcrel_offset */
+
+  /* 12-bit PC-relative branch offset. (DECBNEZ)  */
+  HOWTO (R_RISCV_DECBNEZ_BRANCH,		/* type */
+	 0,				/* rightshift */
+	 2,				/* size */
+	 32,				/* bitsize */
+	 TRUE,				/* pc_relative */
+	 0,				/* bitpos */
+	 complain_overflow_signed,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,		/* special_function */
+	 "R_RISCV_DECBNEZ_BRANCH",		/* name */
+	 FALSE,				/* partial_inplace */
+	 0,				/* src_mask */
+	 ENCODE_ZCE_DECBNEZ_IMM (-1U),	/* dst_mask */
+	 TRUE),				/* pcrel_offset */
+
+  /* 6-bit PC-relative branch offset. (C.DECBNEZ)  */
+  HOWTO (R_RISCV_C_DECBNEZ_BRANCH,		/* type */
+	 0,				/* rightshift */
+	 -1,				/* size */
+	 16,				/* bitsize */
+	 TRUE,				/* pc_relative */
+	 0,				/* bitpos */
+	 complain_overflow_dont,	/* complain_on_overflow */
+	 bfd_elf_generic_reloc,		/* special_function */
+	 "R_RISCV_C_DECBNEZ_BRANCH",		/* name */
+	 FALSE,				/* partial_inplace */
+	 0,				/* src_mask */
+	 ENCODE_ZCE_C_DECBNEZ_IMM (-1U),	/* dst_mask */
+	 TRUE)				/* pcrel_offset */
 };
 
 /* A mapping from BFD reloc types to RISC-V ELF reloc types.  */
@@ -932,6 +962,8 @@ static const struct elf_reloc_map riscv_reloc_map[] =
   { BFD_RELOC_RISCV_SET16, R_RISCV_SET16 },
   { BFD_RELOC_RISCV_SET32, R_RISCV_SET32 },
   { BFD_RELOC_RISCV_32_PCREL, R_RISCV_32_PCREL },
+  { BFD_RELOC_RISCV_DECBNEZ, R_RISCV_DECBNEZ_BRANCH },
+  { BFD_RELOC_RISCV_C_DECBNEZ, R_RISCV_C_DECBNEZ_BRANCH },
 };
 
 /* Given a BFD reloc type, return a howto structure.  */

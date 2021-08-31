@@ -1294,7 +1294,9 @@ append_insn (struct riscv_cl_insn *ip, expressionS *address_expr,
 
       gas_assert (address_expr);
       if (reloc_type == BFD_RELOC_12_PCREL
-	  || reloc_type == BFD_RELOC_RISCV_JMP)
+	  || reloc_type == BFD_RELOC_RISCV_JMP
+	  || reloc_type == BFD_RELOC_RISCV_DECBNEZ
+	  || reloc_type == BFD_RELOC_RISCV_C_DECBNEZ)
 	{
 	  int j = reloc_type == BFD_RELOC_RISCV_JMP;
 	  int best_case = riscv_insn_length (ip->insn_opcode);
@@ -2304,16 +2306,15 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		    {
 		  case 'h':
 		    if (riscv_handle_implicit_zero_offset (imm_expr, s))
-		        continue;
+		      continue;
 		    if (my_getSmallExpression (imm_expr, imm_reloc, s, p)
-		        || imm_expr->X_op != O_constant
-		        || !VALID_ZCE_LHU_IMM ((valueT) imm_expr->X_add_number))
+		        || imm_expr->X_op != O_constant)
 		      break;
 		    ip->insn_opcode |= ENCODE_ZCE_LHU_IMM (imm_expr->X_add_number);
 		    goto rvc_imm_done;
 		  case 'b':
 		    if (riscv_handle_implicit_zero_offset (imm_expr, s))
-		        continue;
+		      continue;
 		    if (my_getSmallExpression (imm_expr, imm_reloc, s, p)
 		        || imm_expr->X_op != O_constant
 		        || !VALID_ZCE_LBU_IMM ((valueT) imm_expr->X_add_number))
@@ -2321,22 +2322,27 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		    ip->insn_opcode |= ENCODE_ZCE_LBU_IMM (imm_expr->X_add_number);
 		    goto rvc_imm_done;
 		  case 'd':
-		    *imm_reloc = BFD_RELOC_12_PCREL;
+		    *imm_reloc = BFD_RELOC_RISCV_C_DECBNEZ;
 		    my_getExpression (imm_expr, s);
 		    s = expr_end;
-		    imm_expr->X_add_number = -imm_expr->X_add_number;
 		    continue;
 		  case 's':
 		    if (my_getSmallExpression (imm_expr, imm_reloc, s, p)
 		        || imm_expr->X_op != O_constant
-		        || !(imm_expr->X_add_number == 1
-		          || imm_expr->X_add_number == 2
-		          || imm_expr->X_add_number == 4
-		          || imm_expr->X_add_number == 8)
 		        || !VALID_ZCE_C_DECBNEZ_SCALE ((valueT) imm_expr->X_add_number))
 		      break;
-		    imm_expr->X_add_number =
-			  imm_expr->X_add_number == 8 ? 0b11 : imm_expr->X_add_number >> 1;
+
+		    switch (imm_expr->X_add_number)
+		    {
+		      case 1: imm_expr->X_add_number = 0b00; break;
+		      case 2: imm_expr->X_add_number = 0b01; break;
+		      case 4: imm_expr->X_add_number = 0b10; break;
+		      case 8: imm_expr->X_add_number = 0b11; break;
+		      default:
+		        as_bad (_("internal: invalid scale value %ld for c.decbnez. Scale must be 1, 2, 4, 8. "), 
+		          imm_expr->X_add_number);
+		        break;
+		    }
 		    ip->insn_opcode |= ENCODE_ZCE_C_DECBNEZ_SCALE (imm_expr->X_add_number);
 		    imm_expr->X_op = O_absent;
 		    s = expr_end;
@@ -2516,21 +2522,33 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		  continue;
 		case 'S':
 		  my_getExpression (imm_expr, s);
-		  if (imm_expr->X_op != O_constant
-		    || !(imm_expr->X_add_number == 1
-		      || imm_expr->X_add_number == 2
-		      || imm_expr->X_add_number == 4
-		      || imm_expr->X_add_number == 8))
+		  if (imm_expr->X_op != O_constant)
 		    break;
+
+		  switch (imm_expr->X_add_number)
+		  {
+		    case 1: imm_expr->X_add_number = 0b00; break;
+		    case 2: imm_expr->X_add_number = 0b01; break;
+		    case 4: imm_expr->X_add_number = 0b10; break;
+		    case 8: imm_expr->X_add_number = 0b11; break;
+		    default:
+		      as_bad (_("internal: invalid scale value %ld for decbnez. Scale must be 1, 2, 4, 8. "), 
+		        imm_expr->X_add_number);
+		      break;
+		  };
+
 		  ip->insn_opcode |= ENCODE_ZCE_DECBNEZ_SCALE (imm_expr->X_add_number);
 		  s = expr_end;
 		  imm_expr->X_op = O_absent;
 		  continue;
 		case 'd':
-		  goto branch;
+		  *imm_reloc = BFD_RELOC_RISCV_DECBNEZ;
+		  my_getExpression (imm_expr, s);
+		  s = expr_end;
+		  continue;
 		default:
-			as_bad (_("internal: unknown ZCE 32 bits instruction"
-					"field specifier `n%c'"), *args);
+		  as_bad (_("internal: unknown ZCE 32 bits instruction"
+		      "field specifier `n%c'"), *args);
 		break;
 		}
 
@@ -3274,6 +3292,26 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	}
       break;
 
+    case BFD_RELOC_RISCV_DECBNEZ:
+      if (fixP->fx_addsy)
+	{
+	  /* Fill in a tentative value to improve objdump readability.  */
+	  bfd_vma target = S_GET_VALUE (fixP->fx_addsy) + *valP;
+	  bfd_vma delta = target - md_pcrel_from (fixP);
+	  bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
+	}
+      break;
+
+    case BFD_RELOC_RISCV_C_DECBNEZ:
+      if (fixP->fx_addsy)
+	{
+	  /* Fill in a tentative value to improve objdump readability.  */
+	  bfd_vma target = S_GET_VALUE (fixP->fx_addsy) + *valP;
+	  bfd_vma delta = target - md_pcrel_from (fixP);
+	  bfd_putl16 (bfd_getl16 (buf) | ENCODE_ZCE_C_DECBNEZ_IMM (-delta), buf);
+	}
+      break;
+
     case BFD_RELOC_RISCV_RVC_BRANCH:
       if (fixP->fx_addsy)
 	{
@@ -3649,7 +3687,6 @@ md_convert_frag_branch (fragS *fragp)
   exp.X_add_number = fragp->fr_offset;
 
   gas_assert (fragp->fr_var == RELAX_BRANCH_LENGTH (fragp->fr_subtype));
-
   if (RELAX_BRANCH_RVC (fragp->fr_subtype))
     {
       switch (RELAX_BRANCH_LENGTH (fragp->fr_subtype))
@@ -3667,6 +3704,8 @@ md_convert_frag_branch (fragS *fragp)
 	      insn = MATCH_BEQ | (rs1 << OP_SH_RS1);
 	    else if ((insn & MASK_C_BNEZ) == MATCH_C_BNEZ)
 	      insn = MATCH_BNE | (rs1 << OP_SH_RS1);
+	    else if ((insn & MATCH_C_DECBNEZ) == MATCH_C_DECBNEZ)
+	      insn = MATCH_DECBNEZ | (rs1 << OP_SH_RD);
 	    else
 	      abort ();
 	    bfd_putl32 (insn, buf);
@@ -3682,9 +3721,14 @@ md_convert_frag_branch (fragS *fragp)
 	    goto jump;
 
 	  case 2:
+	    insn = bfd_getl16 (buf);
 	    /* Just keep the RVC branch.  */
-	    reloc = RELAX_BRANCH_UNCOND (fragp->fr_subtype)
-		    ? BFD_RELOC_RISCV_RVC_JUMP : BFD_RELOC_RISCV_RVC_BRANCH;
+	    if ((insn & MATCH_C_DECBNEZ) == MATCH_C_DECBNEZ)
+	      reloc = BFD_RELOC_RISCV_C_DECBNEZ;
+	    else
+	      reloc = RELAX_BRANCH_UNCOND (fragp->fr_subtype)
+		      ? BFD_RELOC_RISCV_RVC_JUMP : BFD_RELOC_RISCV_RVC_BRANCH;
+
 	    fixp = fix_new_exp (fragp, buf - (bfd_byte *)fragp->fr_literal,
 				2, &exp, FALSE, reloc);
 	    buf += 2;
@@ -3702,11 +3746,17 @@ md_convert_frag_branch (fragS *fragp)
 
       /* Invert the branch condition.  Branch over the jump.  */
       insn = bfd_getl32 (buf);
-      insn ^= MATCH_BEQ ^ MATCH_BNE;
-      insn |= ENCODE_BTYPE_IMM (8);
+      if ((insn & MATCH_DECBNEZ) != MATCH_DECBNEZ)
+      {
+        insn ^= MATCH_BEQ ^ MATCH_BNE;
+        insn |= ENCODE_BTYPE_IMM (8);
+      }
+      else
+      {
+        insn |= ENCODE_ZCE_DECBNEZ_IMM (8);
+      }
       bfd_putl32 (insn, buf);
       buf += 4;
-
     jump:
       /* Jump to the target.  */
       fixp = fix_new_exp (fragp, buf - (bfd_byte *)fragp->fr_literal,
@@ -3716,8 +3766,12 @@ md_convert_frag_branch (fragS *fragp)
       break;
 
     case 4:
-      reloc = RELAX_BRANCH_UNCOND (fragp->fr_subtype)
-	      ? BFD_RELOC_RISCV_JMP : BFD_RELOC_12_PCREL;
+      insn = bfd_getl32 (buf);
+      if ((insn & MATCH_DECBNEZ) == MATCH_DECBNEZ)
+        reloc = BFD_RELOC_RISCV_DECBNEZ;
+      else
+        reloc = RELAX_BRANCH_UNCOND (fragp->fr_subtype)
+	        ? BFD_RELOC_RISCV_JMP : BFD_RELOC_12_PCREL;
       fixp = fix_new_exp (fragp, buf - (bfd_byte *)fragp->fr_literal,
 			  4, &exp, FALSE, reloc);
       buf += 4;

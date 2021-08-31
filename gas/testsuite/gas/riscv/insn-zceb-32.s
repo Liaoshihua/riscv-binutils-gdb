@@ -12,3 +12,5 @@ zceb32:
 	lh  a5,1(a4)
 	sb  a5,1(a4)
 	sh  a5,1(a4)
+	lwgp s0,1
+	swgp s0,1

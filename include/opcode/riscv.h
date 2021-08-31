@@ -60,6 +60,7 @@ static const char * const riscv_pred_succ[16] =
 
 #define RV_X(x, s, n)  (((x) >> (s)) & ((1 << (n)) - 1))
 #define RV_IMM_SIGN(x) (-(((x) >> 31) & 1))
+#define RV_DECBNEZ_IMM_SIGN(x, sh) (-(((x) >> sh) & 1))
 
 #define EXTRACT_ITYPE_IMM(x) \
   (RV_X(x, 20, 12) | (RV_IMM_SIGN(x) << 12))
@@ -112,7 +113,7 @@ static const char * const riscv_pred_succ[16] =
 #define EXTRACT_ZCE_C_DECBNEZ_IMM(x) \
   ((RV_X(x, 4, 3) << 1) | (RV_X(x, 10, 3) << 4))
 #define EXTRACT_ZCE_DECBNEZ_IMM(x) \
-  ((RV_X(x, 17, 1) << 1) | (RV_X(x, 22, 7) << 2) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 2) << 11))
+  ((RV_X(x, 17, 1) << 1) | (RV_X(x, 22, 7) << 2) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 2) << 11) | (RV_DECBNEZ_IMM_SIGN(x, 16) << 12))
 #define EXTRACT_ZCE_C_DECBNEZ_SCALE(x) \
   (RV_X(x, 2, 2))
 #define EXTRACT_ZCE_DECBNEZ_SCALE(x) \
@@ -163,13 +164,13 @@ static const char * const riscv_pred_succ[16] =
 #define ENCODE_ZCE_SWGP_IMM(x) \
   ((RV_X(x, 2, 3) << 9) | (RV_X(x, 5, 4) << 25) | (RV_X(x, 9, 2) << 7) | (RV_X(x, 11, 5) << 15))
 #define ENCODE_ZCE_LBU_IMM(x) \
-  ((RV_X(x, 0, 1) << 11) | (RV_X(x, 1, 1) << 10) | (RV_X(x, 2, 2) << 5))
+  ((RV_X(x, 0, 1) << 11) | (RV_X(x, 1, 2) << 5)) | (RV_X(x, 3, 1) << 10) 
 #define ENCODE_ZCE_LHU_IMM(x) \
   ((RV_X(x, 1, 2) << 5) | (RV_X(x, 3, 2) << 10))
 #define ENCODE_ZCE_C_DECBNEZ_IMM(x) \
   ((RV_X(x, 1, 3) << 4) | (RV_X(x, 4, 3) << 10))
 #define ENCODE_ZCE_DECBNEZ_IMM(x) \
-  ((RV_X(x, 1, 1) << 17) | (RV_X(x, 2, 7) << 22) |(RV_X(x, 9, 2) << 20) |(RV_X(x, 11, 2) << 15))
+  ((RV_X(x, 1, 1) << 17) | (RV_X(x, 2, 7) << 22) | (RV_X(x, 9, 2) << 20) | (RV_X(x, 11, 2) << 15))
 #define ENCODE_ZCE_C_DECBNEZ_SCALE(x) \
   ((RV_X(x, 0, 2)) << 2)
 #define ENCODE_ZCE_DECBNEZ_SCALE(x) \
