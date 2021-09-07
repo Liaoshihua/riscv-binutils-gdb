@@ -3299,17 +3299,28 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  bfd_vma target = S_GET_VALUE (fixP->fx_addsy) + *valP;
 	  bfd_vma delta = target - md_pcrel_from (fixP);
 	  /* check if it can be compressed to c.decbnez */
-	  long label_offset = md_pcrel_from (fixP);
 	  bfd_vma insn = bfd_getl32 (buf);
 	  int rd = (insn >> OP_SH_RD) & OP_MASK_RD;
-	  if ((long)delta < 0 && VALID_ZCE_C_DECBNEZ_IMM(-(long)delta)
+	  if (VALID_ZCE_C_DECBNEZ_IMM(-(long)delta)
 		  && (rd >= 8 && rd <= 15))
 	  {
+	    /* new encoding for c.decbnez */
 	    insn = MATCH_C_DECBNEZ | ((rd-8) << OP_SH_CRS1S) | \
 		  ENCODE_ZCE_C_DECBNEZ_SCALE (EXTRACT_ZCE_DECBNEZ_SCALE (insn)) | \
 		  ENCODE_ZCE_C_DECBNEZ_IMM (-(long)delta);
+	    /* update the relocation type and fixup size */
 	    fixP->fx_r_type = BFD_RELOC_RISCV_C_DECBNEZ;
+	    fixP->fx_size = 2;
+	    /* put c.decbnez into buffer */
 	    bfd_putl16 (insn, buf);
+	    /* add a c.nop to the next 2 bytes */
+	    bfd_putl16 (RVC_NOP, buf+2);
+	    /* add R_RISCV_ALIGN fixup for c.nop, and wish linker can kill it */
+	    fixP->fx_next = xmemdup (fixP, sizeof (*fixP), sizeof (*fixP));
+	    fixP->fx_next->fx_where += 2;
+	    fixP->fx_next->fx_r_type = BFD_RELOC_RISCV_ALIGN;
+	    fixP->fx_next->fx_addsy = expr_build_uconstant(2);
+	    fixP->fx_next->fx_subsy = NULL;
 	  }
 	  else
 	    bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
@@ -3731,8 +3742,15 @@ md_convert_frag_branch (fragS *fragp)
 	  case 6:
 	    /* Invert the branch condition.  Branch over the jump.  */
 	    insn = bfd_getl16 (buf);
-	    insn ^= MATCH_C_BEQZ ^ MATCH_C_BNEZ;
-	    insn |= ENCODE_CBTYPE_IMM (6);
+	    if ((insn & MATCH_C_DECBNEZ) != MATCH_C_DECBNEZ)
+	    {
+	      insn ^= MATCH_C_BEQZ ^ MATCH_C_BNEZ;
+	      insn |= ENCODE_CBTYPE_IMM (6);
+	    }
+	    else
+	    {
+	      insn |= ENCODE_ZCE_DECBNEZ_IMM (6);
+	    }
 	    bfd_putl16 (insn, buf);
 	    buf += 2;
 	    goto jump;
