@@ -3298,7 +3298,21 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  /* Fill in a tentative value to improve objdump readability.  */
 	  bfd_vma target = S_GET_VALUE (fixP->fx_addsy) + *valP;
 	  bfd_vma delta = target - md_pcrel_from (fixP);
-	  bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
+	  /* check if it can be compressed to c.decbnez */
+	  long label_offset = md_pcrel_from (fixP);
+	  bfd_vma insn = bfd_getl32 (buf);
+	  int rd = (insn >> OP_SH_RD) & OP_MASK_RD;
+	  if ((long)delta < 0 && VALID_ZCE_C_DECBNEZ_IMM(-(long)delta)
+		  && (rd >= 8 && rd <= 15))
+	  {
+	    insn = MATCH_C_DECBNEZ | ((rd-8) << OP_SH_CRS1S) | \
+		  ENCODE_ZCE_C_DECBNEZ_SCALE (EXTRACT_ZCE_DECBNEZ_SCALE (insn)) | \
+		  ENCODE_ZCE_C_DECBNEZ_IMM (-(long)delta);
+	    fixP->fx_r_type = BFD_RELOC_RISCV_C_DECBNEZ;
+	    bfd_putl16 (insn, buf);
+	  }
+	  else
+	    bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
 	}
       break;
 
@@ -3705,7 +3719,10 @@ md_convert_frag_branch (fragS *fragp)
 	    else if ((insn & MASK_C_BNEZ) == MATCH_C_BNEZ)
 	      insn = MATCH_BNE | (rs1 << OP_SH_RS1);
 	    else if ((insn & MATCH_C_DECBNEZ) == MATCH_C_DECBNEZ)
+	    {
 	      insn = MATCH_DECBNEZ | (rs1 << OP_SH_RD);
+		  exp.X_add_number *= -1;
+	    }
 	    else
 	      abort ();
 	    bfd_putl32 (insn, buf);
