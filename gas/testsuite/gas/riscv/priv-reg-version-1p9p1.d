@@ -1,4 +1,4 @@
-#as: -march=rv32if -mpriv-spec=1.9.1
+#as: -march=rv32ifv -mpriv-spec=1.9.1
 #source: priv-reg.s
 #objdump: -dr -Mpriv-spec=1.9.1
 
