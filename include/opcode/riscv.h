@@ -52,6 +52,28 @@ static const char * const riscv_pred_succ[16] =
   "i", "iw", "ir", "irw", "io", "iow", "ior", "iorw"
 };
 
+/* List of vsetvli vsew constants.  */
+static const char * const riscv_vsew[8] =
+{
+  "e8", "e16", "e32", "e64", "e128", "e256", "e512", "e1024"
+};
+
+/* List of vsetvli vlmul constants.  */
+static const char * const riscv_vlmul[8] =
+{
+  "m1", "m2", "m4", "m8", 0, "mf8", "mf4", "mf2"
+};
+
+static const char * const riscv_vta[2] =
+{
+  "tu", "ta"
+};
+
+static const char * const riscv_vma[2] =
+{
+  "mu", "ma"
+};
+
 #define RVC_JUMP_BITS 11
 #define RVC_JUMP_REACH ((1ULL << RVC_JUMP_BITS) * RISCV_JUMP_ALIGN)
 
@@ -111,6 +133,16 @@ static const char * const riscv_pred_succ[16] =
   (RV_X(x, 20, 5))
 #define EXTRACT_PTYPE_IMM6U(x) \
   (RV_X(x, 20, 6))
+#define EXTRACT_RVV_VI_IMM(x) \
+  (RV_X(x, 15, 5) | (-RV_X(x, 19, 1) << 5))
+#define EXTRACT_RVV_VI_UIMM(x) \
+  (RV_X(x, 15, 5))
+#define EXTRACT_RVV_OFFSET(x) \
+  (RV_X(x, 29, 3))
+#define EXTRACT_RVV_VB_IMM(x) \
+  (RV_X(x, 20, 10))
+#define EXTRACT_RVV_VC_IMM(x) \
+  (RV_X(x, 20, 11))
 
 #define ENCODE_ITYPE_IMM(x) \
   (RV_X(x, 0, 12) << 20)
@@ -162,6 +194,10 @@ static const char * const riscv_pred_succ[16] =
   (RV_X(x, 0, 6) << 20)
 #define ENCODE_ITYPE_IMM6L(x) \
   (RV_X(x, 0, 6) << 20)
+#define ENCODE_RVV_VB_IMM(x) \
+  (RV_X(x, 0, 10) << 20)
+#define ENCODE_RVV_VC_IMM(x) \
+  (RV_X(x, 0, 11) << 20)
 
 #define VALID_ITYPE_IMM(x) (EXTRACT_ITYPE_IMM(ENCODE_ITYPE_IMM(x)) == (x))
 #define VALID_STYPE_IMM(x) (EXTRACT_STYPE_IMM(ENCODE_STYPE_IMM(x)) == (x))
@@ -189,6 +225,8 @@ static const char * const riscv_pred_succ[16] =
 #define VALID_PTYPE_IMM4U(x) (EXTRACT_PTYPE_IMM4U(ENCODE_PTYPE_IMM4U(x)) == (x))
 #define VALID_PTYPE_IMM5U(x) (EXTRACT_PTYPE_IMM5U(ENCODE_PTYPE_IMM5U(x)) == (x))
 #define VALID_PTYPE_IMM6U(x) (EXTRACT_PTYPE_IMM6U(ENCODE_PTYPE_IMM6U(x)) == (x))
+#define VALID_RVV_VB_IMM(x) (EXTRACT_RVV_VB_IMM(ENCODE_RVV_VB_IMM(x)) == (x))
+#define VALID_RVV_VC_IMM(x) (EXTRACT_RVV_VC_IMM(ENCODE_RVV_VC_IMM(x)) == (x))
 
 #define RISCV_RTYPE(insn, rd, rs1, rs2) \
   ((MATCH_ ## insn) | ((rd) << OP_SH_RD) | ((rs1) << OP_SH_RS1) | ((rs2) << OP_SH_RS2))
@@ -294,6 +332,35 @@ static const char * const riscv_pred_succ[16] =
 #define OP_SH_RNUM      20
 #define OP_MASK_RNUM    0xf
 
+/* RVV fields.  */
+
+#define OP_MASK_VD		0x1f
+#define OP_SH_VD		7
+#define OP_MASK_VS1		0x1f
+#define OP_SH_VS1		15
+#define OP_MASK_VS2		0x1f
+#define OP_SH_VS2		20
+#define OP_MASK_VIMM		0x1f
+#define OP_SH_VIMM		15
+#define OP_MASK_VMASK		0x1
+#define OP_SH_VMASK		25
+#define OP_MASK_VFUNCT6		0x3f
+#define OP_SH_VFUNCT6		26
+
+#define OP_MASK_VLMUL		0x7
+#define OP_SH_VLMUL		0
+#define OP_MASK_VSEW		0x7
+#define OP_SH_VSEW		3
+#define OP_MASK_VTA		0x1
+#define OP_SH_VTA		6
+#define OP_MASK_VMA		0x1
+#define OP_SH_VMA		7
+#define OP_MASK_VTYPE_RES	0x1
+#define OP_SH_VTYPE_RES 	10
+
+#define OP_MASK_VWD		0x1
+#define OP_SH_VWD		26
+
 /* ABI names for selected x-registers.  */
 
 #define X_RA 1
@@ -307,6 +374,8 @@ static const char * const riscv_pred_succ[16] =
 
 #define NGPR 32
 #define NFPR 32
+#define NVECR 32
+#define NVECM 1
 
 /* These fake label defines are use by both the assembler, and
    libopcodes.  The assembler uses this when it needs to generate a fake
@@ -344,8 +413,15 @@ enum riscv_insn_class
   INSN_CLASS_F,
   INSN_CLASS_D,
   INSN_CLASS_Q,
+  INSN_CLASS_V,
   INSN_CLASS_F_AND_C,
+  INSN_CLASS_F_AND_ZFH,
   INSN_CLASS_D_AND_C,
+  INSN_CLASS_D_AND_ZFH,
+  INSN_CLASS_Q_AND_ZFH,
+  INSN_CLASS_V_AND_F,
+  INSN_CLASS_V_OR_ZVAMO,
+  INSN_CLASS_V_OR_ZVLSSEG,
   INSN_CLASS_ZICSR,
   INSN_CLASS_ZIFENCEI,
   INSN_CLASS_ZIHINTPAUSE,
@@ -396,8 +472,11 @@ struct riscv_opcode
   insn_t mask;
 
   /* A function to determine if a word corresponds to this instruction.
-     Usually, this computes ((word & mask) == match).  */
-  int (*match_func) (const struct riscv_opcode *op, insn_t word);
+     Usually, this computes ((word & mask) == match).  If the constraints
+     checking is disable, then most of the function should check only the
+     basic encoding for the instruction.  */
+  int (*match_func) (const struct riscv_opcode *op, insn_t word,
+		     int constraints, const char **error);
 
   /* For a macro, this is INSN_MACRO.  Otherwise, it is a collection
      of bits describing the instruction, notably any relevant hazard
@@ -455,9 +534,11 @@ enum
   M_SH,
   M_SW,
   M_SD,
+  M_FLH,
   M_FLW,
   M_FLD,
   M_FLQ,
+  M_FHW,
   M_FSW,
   M_FSD,
   M_FSQ,
@@ -468,6 +549,8 @@ enum
   M_ZEXTW,
   M_SEXTB,
   M_SEXTH,
+  M_VMSGE,
+  M_VMSGEU,
   M_NUM_MACROS
 };
 
@@ -476,6 +559,8 @@ extern const char * const riscv_gpr_names_numeric[NGPR];
 extern const char * const riscv_gpr_names_abi[NGPR];
 extern const char * const riscv_fpr_names_numeric[NFPR];
 extern const char * const riscv_fpr_names_abi[NFPR];
+extern const char * const riscv_vecr_names_numeric[NVECR];
+extern const char * const riscv_vecm_names_numeric[NVECM];
 
 extern const struct riscv_opcode riscv_opcodes[];
 extern const struct riscv_opcode riscv_insn_types[];
