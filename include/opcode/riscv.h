@@ -538,7 +538,7 @@ enum
   M_FLW,
   M_FLD,
   M_FLQ,
-  M_FHW,
+  M_FSH,
   M_FSW,
   M_FSD,
   M_FSQ,

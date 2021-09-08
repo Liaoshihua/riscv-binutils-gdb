@@ -400,7 +400,7 @@ match_c_slli64 (const struct riscv_opcode *op, insn_t insn,
 		int constraints ATTRIBUTE_UNUSED,
 		const char **error ATTRIBUTE_UNUSED)
 {
-  return match_opcode (op, insn, 0, NULL) && E XTRACT_CITYPE_IMM (insn) == 0;
+  return match_opcode (op, insn, 0, NULL) && EXTRACT_CITYPE_IMM (insn) == 0;
 }
 
 /* This is used for both srli and srai.  This requires a non-zero shift.
