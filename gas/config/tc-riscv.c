@@ -1288,8 +1288,28 @@ append_insn (struct riscv_cl_insn *ip, expressionS *address_expr,
 {
   dwarf2_emit_insn (0);
 
+
   if (reloc_type != BFD_RELOC_UNUSED)
     {
+      if (reloc_type == BFD_RELOC_RISCV_DECBNEZ
+	    && address_expr->X_add_symbol
+	    && S_IS_DEFINED (address_expr->X_add_symbol))
+    {
+    long label_loc = S_GET_VALUE (address_expr->X_add_symbol);
+    long insn_loc = (frag_more (0) - frag_now->fr_literal);
+    long offset = insn_loc - label_loc;
+    int rd = (ip->insn_opcode >> OP_SH_RD) & OP_MASK_RD;
+    if (VALID_ZCE_C_DECBNEZ_IMM(offset)
+	    && (rd >= 8 && rd <= 15))
+  {
+    /* new encoding for c.decbnez */
+    ip->insn_opcode = MATCH_C_DECBNEZ \
+	| ((rd-8) << OP_SH_CRS1S) \
+	| ENCODE_ZCE_C_DECBNEZ_SCALE (EXTRACT_ZCE_DECBNEZ_SCALE (ip->insn_opcode)) \
+	| ENCODE_ZCE_C_DECBNEZ_IMM (offset);
+    reloc_type = BFD_RELOC_RISCV_C_DECBNEZ;
+  }
+    }
       reloc_howto_type *howto;
 
       gas_assert (address_expr);
@@ -1307,7 +1327,6 @@ append_insn (struct riscv_cl_insn *ip, expressionS *address_expr,
 	      as_bad (_("relaxable branches not supported in absolute section"));
 	      return;
 	    }
-
 	  add_relaxed_insn (ip, worst_case, best_case,
 			    RELAX_BRANCH_ENCODE (j, best_case == 2, worst_case),
 			    address_expr->X_add_symbol,
@@ -3301,29 +3320,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  /* check if it can be compressed to c.decbnez */
 	  bfd_vma insn = bfd_getl32 (buf);
 	  int rd = (insn >> OP_SH_RD) & OP_MASK_RD;
-	  if (VALID_ZCE_C_DECBNEZ_IMM(-(long)delta)
-		  && (rd >= 8 && rd <= 15))
-	  {
-	    /* new encoding for c.decbnez */
-	    insn = MATCH_C_DECBNEZ | ((rd-8) << OP_SH_CRS1S) | \
-		  ENCODE_ZCE_C_DECBNEZ_SCALE (EXTRACT_ZCE_DECBNEZ_SCALE (insn)) | \
-		  ENCODE_ZCE_C_DECBNEZ_IMM (-(long)delta);
-	    /* update the relocation type and fixup size */
-	    fixP->fx_r_type = BFD_RELOC_RISCV_C_DECBNEZ;
-	    fixP->fx_size = 2;
-	    /* put c.decbnez into buffer */
-	    bfd_putl16 (insn, buf);
-	    /* add a c.nop to the next 2 bytes */
-	    bfd_putl16 (RVC_NOP, buf+2);
-	    /* add R_RISCV_ALIGN fixup for c.nop, and wish linker can kill it */
-	    fixP->fx_next = xmemdup (fixP, sizeof (*fixP), sizeof (*fixP));
-	    fixP->fx_next->fx_where += 2;
-	    fixP->fx_next->fx_r_type = BFD_RELOC_RISCV_ALIGN;
-	    fixP->fx_next->fx_addsy = expr_build_uconstant(2);
-	    fixP->fx_next->fx_subsy = NULL;
-	  }
-	  else
-	    bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
+	  bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
 	}
       break;
 
@@ -3732,7 +3729,7 @@ md_convert_frag_branch (fragS *fragp)
 	    else if ((insn & MATCH_C_DECBNEZ) == MATCH_C_DECBNEZ)
 	    {
 	      insn = MATCH_DECBNEZ | (rs1 << OP_SH_RD);
-		  exp.X_add_number *= -1;
+	      exp.X_add_number *= -1;
 	    }
 	    else
 	      abort ();
@@ -3765,7 +3762,7 @@ md_convert_frag_branch (fragS *fragp)
 		      ? BFD_RELOC_RISCV_RVC_JUMP : BFD_RELOC_RISCV_RVC_BRANCH;
 
 	    fixp = fix_new_exp (fragp, buf - (bfd_byte *)fragp->fr_literal,
-				2, &exp, FALSE, reloc);
+		  2, &exp, FALSE, reloc);
 	    buf += 2;
 	    goto done;
 
@@ -3795,7 +3792,7 @@ md_convert_frag_branch (fragS *fragp)
     jump:
       /* Jump to the target.  */
       fixp = fix_new_exp (fragp, buf - (bfd_byte *)fragp->fr_literal,
-			  4, &exp, FALSE, BFD_RELOC_RISCV_JMP);
+		  4, &exp, FALSE, BFD_RELOC_RISCV_JMP);
       bfd_putl32 (MATCH_JAL, buf);
       buf += 4;
       break;
@@ -3806,9 +3803,10 @@ md_convert_frag_branch (fragS *fragp)
         reloc = BFD_RELOC_RISCV_DECBNEZ;
       else
         reloc = RELAX_BRANCH_UNCOND (fragp->fr_subtype)
-	        ? BFD_RELOC_RISCV_JMP : BFD_RELOC_12_PCREL;
+		    ? BFD_RELOC_RISCV_JMP : BFD_RELOC_12_PCREL;
+
       fixp = fix_new_exp (fragp, buf - (bfd_byte *)fragp->fr_literal,
-			  4, &exp, FALSE, reloc);
+		  4, &exp, FALSE, reloc);
       buf += 4;
       break;
 
