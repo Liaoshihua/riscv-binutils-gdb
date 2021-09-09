@@ -1631,6 +1631,27 @@ perform_relocation (const reloc_howto_type *howto,
       value = ENCODE_ITYPE_IMM (value);
       break;
 
+    case R_RISCV_GPREL_ZCE_LWGP:
+      if (!VALID_ZCE_LWGP_IMM (value))
+	return bfd_reloc_overflow;
+      value = ENCODE_ZCE_LWGP_IMM (value);
+      break;
+    case R_RISCV_GPREL_ZCE_SWGP:
+      if (!VALID_ZCE_SWGP_IMM (value))
+	return bfd_reloc_overflow;
+      value = ENCODE_ZCE_SWGP_IMM (value);
+      break;
+    case R_RISCV_GPREL_ZCE_LDGP:
+      if (!VALID_ZCE_LDGP_IMM (value))
+	return bfd_reloc_overflow;
+      value = ENCODE_ZCE_LDGP_IMM (value);
+      break;
+    case R_RISCV_GPREL_ZCE_SDGP:
+      if (!VALID_ZCE_SDGP_IMM (value))
+	return bfd_reloc_overflow;
+      value = ENCODE_ZCE_SDGP_IMM (value);
+      break;
+
     case R_RISCV_LO12_S:
     case R_RISCV_GPREL_S:
     case R_RISCV_TPREL_LO12_S:
@@ -2475,16 +2496,79 @@ riscv_elf_relocate_section (bfd *output_bfd,
 	  else
 	    r = bfd_reloc_overflow;
 	  break;
+	case R_RISCV_GPREL_ZCE_SDGP:
+	case R_RISCV_GPREL_ZCE_LDGP:
+	  {
+	    bfd_vma gp = riscv_global_pointer_value (info); // todo
+	    bfd_vma insn = bfd_getl32 (contents + rel->r_offset);
+	    bfd_vma dist = relocation + rel->r_addend - gp;
+	    if (VALID_ZCE_LDGP_IMM (dist))
+	    {
+		if (r_type == R_RISCV_GPREL_ZCE_SDGP)
+		{
+		  insn = MATCH_SDGP | (insn & (OP_MASK_RS2 << OP_SH_RS2)) |
+		    ENCODE_ZCE_SDGP_IMM (dist);
+		}
+		else if (r_type == R_RISCV_GPREL_ZCE_LDGP)
+		{
+		  insn = MATCH_LDGP | (insn & (OP_MASK_RD << OP_SH_RD)) |
+		    ENCODE_ZCE_LDGP_IMM (dist);
+		}
+		else
+		  abort();
+	        bfd_putl32 (insn, contents + rel->r_offset);
+	        rel->r_addend -= gp;
+	        break;
+	    }
+	    else
+	    {
+		r = bfd_reloc_overflow;
+	        break;			
+	    }
+	  }
+
+	case R_RISCV_GPREL_ZCE_SWGP:
+	case R_RISCV_GPREL_ZCE_LWGP:
+	  {
+	    bfd_vma gp = riscv_global_pointer_value (info); // todo
+	    bfd_vma insn = bfd_getl32 (contents + rel->r_offset);
+	    bfd_vma dist = relocation + rel->r_addend - gp;
+	    if (VALID_ZCE_LWGP_IMM (dist))
+	    {
+		if (r_type == R_RISCV_GPREL_ZCE_SWGP)
+		{
+		  insn = MATCH_SWGP | (insn & (OP_MASK_RS2 << OP_SH_RS2)) |
+		    ENCODE_ZCE_SWGP_IMM (dist);
+		}
+		else if (r_type == R_RISCV_GPREL_ZCE_LWGP)
+		{
+		  insn = MATCH_LWGP | (insn & (OP_MASK_RD << OP_SH_RD)) |
+		    ENCODE_ZCE_LWGP_IMM (dist);
+		}
+		else
+		  abort();
+	        bfd_putl32 (insn, contents + rel->r_offset);
+	        rel->r_addend -= gp;
+	        break;
+	    }
+	    else
+	    {
+		r = bfd_reloc_overflow;
+	        break;			
+	    }
+	  }
 
 	case R_RISCV_GPREL_I:
 	case R_RISCV_GPREL_S:
 	  {
 	    bfd_vma gp = riscv_global_pointer_value (info);
 	    bfd_boolean x0_base = VALID_ITYPE_IMM (relocation + rel->r_addend);
-	    if (x0_base || VALID_ITYPE_IMM (relocation + rel->r_addend - gp))
+	    bfd_vma insn = bfd_getl32 (contents + rel->r_offset);
+	    bfd_vma dist = relocation + rel->r_addend - gp;
+
+	    if (x0_base || VALID_ITYPE_IMM (dist))
 	      {
 		/* We can use x0 or gp as the base register.  */
-		bfd_vma insn = bfd_getl32 (contents + rel->r_offset);
 		insn &= ~(OP_MASK_RS1 << OP_SH_RS1);
 		if (!x0_base)
 		  {
@@ -2492,10 +2576,12 @@ riscv_elf_relocate_section (bfd *output_bfd,
 		    insn |= X_GP << OP_SH_RS1;
 		  }
 		bfd_putl32 (insn, contents + rel->r_offset);
+		rel->r_addend -= gp;
+		break;
 	      }
-	    else
+
 	      r = bfd_reloc_overflow;
-	    break;
+	      break;
 	  }
 
 	case R_RISCV_PCREL_HI20:
@@ -4244,7 +4330,6 @@ _bfd_riscv_relax_lui (bfd *abfd,
   bfd_byte *contents = elf_section_data (sec)->this_hdr.contents;
   bfd_vma gp = riscv_global_pointer_value (link_info);
   int use_rvc = elf_elfheader (abfd)->e_flags & EF_RISCV_RVC;
-
   BFD_ASSERT (rel->r_offset + 4 <= sec->size);
 
   if (gp)
@@ -4305,6 +4390,57 @@ _bfd_riscv_relax_lui (bfd *abfd,
 	default:
 	  abort ();
 	}
+    }
+
+  /* can it be optimize into zceb gp-relative instructions */
+  if ((symval >= gp
+	&& VALID_ZCE_LWGP_IMM (symval - gp + max_alignment + reserve_size))
+   || (symval < gp
+	&& VALID_ZCE_LWGP_IMM (symval - gp - max_alignment - reserve_size)))
+    {
+      unsigned sym = ELFNN_R_SYM (rel->r_info);
+      switch (ELFNN_R_TYPE (rel->r_info))
+        {
+        case R_RISCV_LO12_I:
+          rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_LWGP);
+          return TRUE;
+        case R_RISCV_LO12_S:
+          rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_SWGP);
+          return TRUE;
+        case R_RISCV_HI20:
+          /* We can delete the unnecessary LUI and reloc.  */
+          rel->r_info = ELFNN_R_INFO (0, R_RISCV_NONE);
+          *again = TRUE;
+          return riscv_relax_delete_bytes (abfd, sec, rel->r_offset, 4,
+		link_info);
+        default:
+          abort ();
+        }
+    }
+
+  if ((symval >= gp
+	&& VALID_ZCE_LDGP_IMM (symval - gp + max_alignment + reserve_size))
+   || (symval < gp
+	&& VALID_ZCE_LDGP_IMM (symval - gp - max_alignment - reserve_size)))
+    {
+      unsigned sym = ELFNN_R_SYM (rel->r_info);
+      switch (ELFNN_R_TYPE (rel->r_info))
+        {
+        case R_RISCV_LO12_I:
+          rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_LDGP);
+          return TRUE;
+        case R_RISCV_LO12_S:
+          rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_SDGP);
+          return TRUE;
+        case R_RISCV_HI20:
+          /* We can delete the unnecessary LUI and reloc.  */
+          rel->r_info = ELFNN_R_INFO (0, R_RISCV_NONE);
+          *again = TRUE;
+          return riscv_relax_delete_bytes (abfd, sec, rel->r_offset, 4,
+		link_info);
+        default:
+          abort ();
+        }
     }
 
   /* Can we relax LUI to C.LUI?  Alignment might move the section forward;
@@ -4568,6 +4704,78 @@ _bfd_riscv_relax_pc (bfd *abfd ATTRIBUTE_UNUSED,
 	      rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_S);
 	      rel->r_addend += hi_reloc.hi_addend;
 	    }
+	  return TRUE;
+
+	case R_RISCV_PCREL_HI20:
+	  riscv_record_pcgp_hi_reloc (pcgp_relocs,
+				      rel->r_offset,
+				      rel->r_addend,
+				      symval,
+				      ELFNN_R_SYM(rel->r_info),
+				      sym_sec,
+				      undefined_weak);
+	  /* We can delete the unnecessary AUIPC and reloc.  */
+	  rel->r_info = ELFNN_R_INFO (0, R_RISCV_DELETE);
+	  rel->r_addend = 4;
+	  return TRUE;
+
+	default:
+	  abort ();
+	}
+    }
+
+    if ((symval >= gp
+        && VALID_ZCE_LWGP_IMM (symval - gp + max_alignment + reserve_size))
+     || (symval < gp
+	&& VALID_ZCE_LWGP_IMM (symval - gp - max_alignment - reserve_size)))
+    {
+      unsigned sym = hi_reloc.hi_sym;
+      switch (ELFNN_R_TYPE (rel->r_info))
+	{
+	case R_RISCV_PCREL_LO12_I:
+	  rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_LWGP);
+	  rel->r_addend += hi_reloc.hi_addend;
+	  return TRUE;
+
+	case R_RISCV_PCREL_LO12_S:
+	  rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_SWGP);
+	  rel->r_addend += hi_reloc.hi_addend;
+	  return TRUE;
+
+	case R_RISCV_PCREL_HI20:
+	  riscv_record_pcgp_hi_reloc (pcgp_relocs,
+				      rel->r_offset,
+				      rel->r_addend,
+				      symval,
+				      ELFNN_R_SYM(rel->r_info),
+				      sym_sec,
+				      undefined_weak);
+	  /* We can delete the unnecessary AUIPC and reloc.  */
+	  rel->r_info = ELFNN_R_INFO (0, R_RISCV_DELETE);
+	  rel->r_addend = 4;
+	  return TRUE;
+
+	default:
+	  abort ();
+	}
+    }
+
+    if ((symval >= gp
+        && VALID_ZCE_LDGP_IMM (symval - gp + max_alignment + reserve_size))
+     || (symval < gp
+	&& VALID_ZCE_LDGP_IMM (symval - gp - max_alignment - reserve_size)))
+    {
+      unsigned sym = hi_reloc.hi_sym;
+      switch (ELFNN_R_TYPE (rel->r_info))
+	{
+	case R_RISCV_PCREL_LO12_I:
+	  rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_LDGP);
+	  rel->r_addend += hi_reloc.hi_addend;
+	  return TRUE;
+
+	case R_RISCV_PCREL_LO12_S:
+	  rel->r_info = ELFNN_R_INFO (sym, R_RISCV_GPREL_ZCE_SDGP);
+	  rel->r_addend += hi_reloc.hi_addend;
 	  return TRUE;
 
 	case R_RISCV_PCREL_HI20:

@@ -325,7 +325,13 @@ print_insn_args (const char *d, insn_t l, bfd_vma pc, disassemble_info *info)
 	    case 's':
 	      print (info->stream, "%d", (int)EXTRACT_ZCE_SWGP_IMM (l));
 	      break;
+	    case 'L':
+	      print (info->stream, "%d", (int)EXTRACT_ZCE_LDGP_IMM (l));
+	      break;
 	    case 'S':
+	      print (info->stream, "%d", (int)EXTRACT_ZCE_SDGP_IMM (l));
+	      break;
+	    case 'i':
 		  switch ((int)EXTRACT_ZCE_DECBNEZ_SCALE (l))
 		  {
 		    case 0b00: print (info->stream, "%d", 1); break;

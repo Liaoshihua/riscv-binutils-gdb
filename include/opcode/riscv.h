@@ -103,9 +103,13 @@ static const char * const riscv_pred_succ[16] =
 #define EXTRACT_CJTYPE_IMM(x) \
   ((RV_X(x, 3, 3) << 1) | (RV_X(x, 11, 1) << 4) | (RV_X(x, 2, 1) << 5) | (RV_X(x, 7, 1) << 6) | (RV_X(x, 6, 1) << 7) | (RV_X(x, 9, 2) << 8) | (RV_X(x, 8, 1) << 10) | (-RV_X(x, 12, 1) << 11))
 #define EXTRACT_ZCE_LWGP_IMM(x) \
-  ((RV_X(x, 22, 7) << 2) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 5) << 11))
+  ((RV_X(x, 22, 7) << 2) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 5) << 11) | (-RV_X(x, 19, 1) << 16))
 #define EXTRACT_ZCE_SWGP_IMM(x) \
-  ((RV_X(x, 9, 3) << 2) | (RV_X(x, 25, 4) << 5) | (RV_X(x, 7, 2) << 9) | (RV_X(x, 15, 5) << 11))
+  ((RV_X(x, 9, 3) << 2) | (RV_X(x, 25, 4) << 5) | (RV_X(x, 7, 2) << 9) | (RV_X(x, 15, 5) << 11) | (-RV_X(x, 19, 1) << 16))
+#define EXTRACT_ZCE_LDGP_IMM(x) \
+  ((RV_X(x, 23, 6) << 3) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 5) << 11) | (RV_X(x, 22, 1) << 16) | (-RV_X(x, 22, 1) << 17))
+#define EXTRACT_ZCE_SDGP_IMM(x) \
+  ((RV_X(x, 10, 2) << 3) | (RV_X(x, 25, 4) << 5) | (RV_X(x, 7, 2) << 9) | (RV_X(x, 15, 5) << 11) | (RV_X(x, 9, 1) << 16)  | (-RV_X(x, 9, 1) << 17))
 #define EXTRACT_ZCE_LBU_IMM(x) \
   (RV_X(x, 11, 1) | (RV_X(x, 5, 2) << 1) | (RV_X(x, 10, 1) << 3))
 #define EXTRACT_ZCE_LHU_IMM(x) \
@@ -113,7 +117,7 @@ static const char * const riscv_pred_succ[16] =
 #define EXTRACT_ZCE_C_DECBNEZ_IMM(x) \
   ((RV_X(x, 4, 3) << 1) | (RV_X(x, 10, 3) << 4))
 #define EXTRACT_ZCE_DECBNEZ_IMM(x) \
-  ((RV_X(x, 17, 1) << 1) | (RV_X(x, 22, 7) << 2) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 2) << 11) | (RV_DECBNEZ_IMM_SIGN(x, 16) << 12))
+  ((RV_X(x, 17, 1) << 1) | (RV_X(x, 22, 7) << 2) | (RV_X(x, 20, 2) << 9) | (RV_X(x, 15, 2) << 11) | (-RV_X(x, 16, 1) << 12))
 #define EXTRACT_ZCE_C_DECBNEZ_SCALE(x) \
   (RV_X(x, 2, 2))
 #define EXTRACT_ZCE_DECBNEZ_SCALE(x) \
@@ -163,6 +167,10 @@ static const char * const riscv_pred_succ[16] =
   ((RV_X(x, 2, 7) << 22) | (RV_X(x, 9, 2) << 20) | (RV_X(x, 11, 5) << 15))
 #define ENCODE_ZCE_SWGP_IMM(x) \
   ((RV_X(x, 2, 3) << 9) | (RV_X(x, 5, 4) << 25) | (RV_X(x, 9, 2) << 7) | (RV_X(x, 11, 5) << 15))
+#define ENCODE_ZCE_LDGP_IMM(x) \
+  ((RV_X(x, 3, 6) << 23) | (RV_X(x, 9, 2) << 20) | (RV_X(x, 11, 5) << 15) | (RV_X(x, 16, 1) << 22))
+#define ENCODE_ZCE_SDGP_IMM(x) \
+  ((RV_X(x, 3, 2) << 10) | (RV_X(x, 5, 4) << 25) | (RV_X(x, 9, 2) << 7) | (RV_X(x, 11, 5) << 15) | (RV_X(x, 16, 1) << 9))
 #define ENCODE_ZCE_LBU_IMM(x) \
   ((RV_X(x, 0, 1) << 11) | (RV_X(x, 1, 2) << 5)) | (RV_X(x, 3, 1) << 10) 
 #define ENCODE_ZCE_LHU_IMM(x) \
@@ -200,6 +208,8 @@ static const char * const riscv_pred_succ[16] =
 #define VALID_CJTYPE_IMM(x) (EXTRACT_CJTYPE_IMM(ENCODE_CJTYPE_IMM(x)) == (x))
 #define VALID_ZCE_LWGP_IMM(x) (EXTRACT_ZCE_LWGP_IMM(ENCODE_ZCE_LWGP_IMM(x)) == (x))
 #define VALID_ZCE_SWGP_IMM(x) (EXTRACT_ZCE_SWGP_IMM(ENCODE_ZCE_SWGP_IMM(x)) == (x))
+#define VALID_ZCE_LDGP_IMM(x) (EXTRACT_ZCE_LDGP_IMM(ENCODE_ZCE_LDGP_IMM(x)) == (x))
+#define VALID_ZCE_SDGP_IMM(x) (EXTRACT_ZCE_SDGP_IMM(ENCODE_ZCE_SDGP_IMM(x)) == (x))
 #define VALID_ZCE_LBU_IMM(x) (EXTRACT_ZCE_LBU_IMM(ENCODE_ZCE_LBU_IMM(x)) == (x))
 #define VALID_ZCE_LHU_IMM(x) (EXTRACT_ZCE_LHU_IMM(ENCODE_ZCE_LHU_IMM(x)) == (x))
 #define VALID_ZCE_C_DECBNEZ_IMM(x) (EXTRACT_ZCE_C_DECBNEZ_IMM(ENCODE_ZCE_C_DECBNEZ_IMM(x)) == (x))

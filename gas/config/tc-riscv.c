@@ -1087,7 +1087,9 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 	  {
 	    case 'l': used_bits |= ENCODE_ZCE_LWGP_IMM (-1U); break;
 	    case 's': used_bits |= ENCODE_ZCE_SWGP_IMM (-1U); break;
-	    case 'S': used_bits |= ENCODE_ZCE_DECBNEZ_SCALE (-1U); break;
+	    case 'L': used_bits |= ENCODE_ZCE_LDGP_IMM (-1U); break;
+	    case 'S': used_bits |= ENCODE_ZCE_SDGP_IMM (-1U); break;
+	    case 'i': used_bits |= ENCODE_ZCE_DECBNEZ_SCALE (-1U); break;
 	    case 'd': used_bits |= ENCODE_ZCE_DECBNEZ_IMM (-1U); break;
 	    default:
 	      as_bad (_("internal: bad RISC-V opcode "
@@ -2558,6 +2560,22 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		  s = expr_end;
 		  imm_expr->X_op = O_absent;
 		  continue;
+		case 'L':
+		  my_getExpression (imm_expr, s);
+		  if (imm_expr->X_op != O_constant)
+		    break;
+		  ip->insn_opcode |= ENCODE_ZCE_LDGP_IMM (imm_expr->X_add_number);
+		  s = expr_end;
+		  imm_expr->X_op = O_absent;
+		  continue;
+		case 'S':
+		  my_getExpression (imm_expr, s);
+		  if (imm_expr->X_op != O_constant)
+		    break;
+		  ip->insn_opcode |= ENCODE_ZCE_SDGP_IMM (imm_expr->X_add_number);
+		  s = expr_end;
+		  imm_expr->X_op = O_absent;
+		  continue;
 		case 'h':
 		  my_getExpression (imm_expr, s);
 		  if (imm_expr->X_op != O_constant)
@@ -2566,7 +2584,7 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 		  s = expr_end;
 		  imm_expr->X_op = O_absent;
 		  continue;
-		case 'S':
+		case 'i':
 		  my_getExpression (imm_expr, s);
 		  if (imm_expr->X_op != O_constant)
 		    break;
@@ -3758,7 +3776,7 @@ md_convert_frag_branch (fragS *fragp)
 	      insn = MATCH_BEQ | (rs1 << OP_SH_RS1);
 	    else if ((insn & MASK_C_BNEZ) == MATCH_C_BNEZ)
 	      insn = MATCH_BNE | (rs1 << OP_SH_RS1);
-	    else if ((insn & MATCH_C_DECBNEZ) == MATCH_C_DECBNEZ)
+	    else if ((insn & MASK_C_DECBNEZ) == MATCH_C_DECBNEZ)
 	    {
 	      insn = MATCH_DECBNEZ | (rs1 << OP_SH_RD);
 	      exp.X_add_number *= -1;

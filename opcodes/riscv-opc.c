@@ -603,9 +603,14 @@ const struct riscv_opcode riscv_opcodes[] =
 {"fcvt.s.lu", 64, INSN_CLASS_F,   "D,s",       MATCH_FCVT_S_LU|MASK_RM, MASK_FCVT_S_L|MASK_RM, match_opcode, 0 },
 {"fcvt.s.lu", 64, INSN_CLASS_F,   "D,s,m",     MATCH_FCVT_S_LU, MASK_FCVT_S_LU, match_opcode, 0 },
 
-{"c.decbnez",  0,  INSN_CLASS_ZCEB, "Cs,CZs,CZd", MATCH_C_DECBNEZ, MASK_C_DECBNEZ, match_opcode, INSN_CONDBRANCH },
 {"decbnez",    0,  INSN_CLASS_ZCEB, "Cs,CZs,CZd", MATCH_C_DECBNEZ, MASK_C_DECBNEZ, match_c_decbnez, INSN_ALIAS|INSN_CONDBRANCH },
-{"decbnez",    0,  INSN_CLASS_ZCEB, "d,nS,nd",    MATCH_DECBNEZ, MASK_DECBNEZ, match_opcode, INSN_CONDBRANCH },
+{"decbnez",    0,  INSN_CLASS_ZCEB, "d,ni,nd",    MATCH_DECBNEZ, MASK_DECBNEZ, match_opcode, INSN_CONDBRANCH },
+{"c.decbnez",  0,  INSN_CLASS_ZCEB, "Cs,CZs,CZd", MATCH_C_DECBNEZ, MASK_C_DECBNEZ, match_opcode, INSN_CONDBRANCH },
+
+{"lwgp",       0,  INSN_CLASS_ZCEB, "d,nl",       MATCH_FLD, MASK_LWGP, match_opcode, INSN_DREF|INSN_4_BYTE },
+{"swgp",       0,  INSN_CLASS_ZCEB, "t,ns",       MATCH_FSD, MASK_SWGP, match_opcode, INSN_DREF|INSN_4_BYTE },
+{"ldgp",       64, INSN_CLASS_ZCEB, "d,nL",       MATCH_LDGP, MASK_LDGP, match_opcode, INSN_DREF|INSN_8_BYTE },
+{"sdgp",       64, INSN_CLASS_ZCEB, "t,nS",       MATCH_SDGP, MASK_SDGP, match_opcode, INSN_DREF|INSN_8_BYTE },
 
 /* Double-precision floating-point instruction subset.  */
 {"fld",        0, INSN_CLASS_D_AND_C, "D,Cn(Cc)",  MATCH_C_FLDSP, MASK_C_FLDSP, match_opcode, INSN_ALIAS|INSN_DREF|INSN_8_BYTE },
@@ -868,10 +873,6 @@ const struct riscv_opcode riscv_opcodes[] =
 {"c.zext.w",  64, INSN_CLASS_ZCEE,  "Cs",  MATCH_C_ZEXT_W, MASK_C_ZEXT_W, match_opcode, 0 },
 {"c.mul",     0,  INSN_CLASS_ZCEE,  "Cs,Ct",  MATCH_C_MUL, MASK_C_MUL, match_opcode, 0 },
 
-{"lwgp",       0,  INSN_CLASS_ZCEB, "d,nl",       MATCH_FLD, MASK_LWGP, match_opcode, INSN_DREF|INSN_4_BYTE },
-{"swgp",       0,  INSN_CLASS_ZCEB, "t,ns",       MATCH_FSD, MASK_SWGP, match_opcode, INSN_DREF|INSN_4_BYTE },
-{"ldgp",       64, INSN_CLASS_ZCEB, "d,nl",       MATCH_LDGP, MASK_LDGP, match_opcode, INSN_DREF|INSN_8_BYTE },
-{"sdgp",       64, INSN_CLASS_ZCEB, "t,ns",       MATCH_SDGP, MASK_SDGP, match_opcode, INSN_DREF|INSN_8_BYTE },
 {"c.lbu",      0,  INSN_CLASS_ZCEB, "Ct,CZb(Cs)", MATCH_C_LBU, MASK_C_LBU, match_opcode, INSN_DREF|INSN_1_BYTE },
 {"c.lhu",      0,  INSN_CLASS_ZCEB, "Ct,CZh(Cs)", MATCH_C_LHU, MASK_C_LHU, match_opcode, INSN_DREF|INSN_2_BYTE },
 {"c.lb",       0,  INSN_CLASS_ZCEB, "Ct,CZb(Cs)", MATCH_C_LB, MASK_C_LB, match_opcode, INSN_DREF|INSN_1_BYTE },

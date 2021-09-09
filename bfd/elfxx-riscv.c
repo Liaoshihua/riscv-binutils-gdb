@@ -900,7 +900,67 @@ static reloc_howto_type howto_table[] =
 	 FALSE,				/* partial_inplace */
 	 0,				/* src_mask */
 	 ENCODE_ZCE_C_DECBNEZ_IMM (-1U),	/* dst_mask */
-	 TRUE)				/* pcrel_offset */
+	 TRUE),				/* pcrel_offset */
+
+  /* 16 bits imm GP-relative store.  */
+  HOWTO (BFD_RELOC_RISCV_GPREL_SWGP,	/* type */
+	0,				/* rightshift */
+	2,				/* size */
+	32,				/* bitsize */
+	FALSE,				/* pc_relative */
+	0,				/* bitpos */
+	complain_overflow_signed,	/* complain_on_overflow */
+	bfd_elf_generic_reloc,		/* special_function */
+	"R_RISCV_GPREL_ZCE_SWGP",		/* name */
+	FALSE,				/* partial_inplace */
+	0,				/* src_mask */
+	ENCODE_ZCE_SWGP_IMM (-1U),	/* dst_mask */
+	FALSE),			/* pcrel_offset */
+
+  /* 17 bits imm GP-relative store.  */
+  HOWTO (BFD_RELOC_RISCV_GPREL_SDGP,	/* type */
+	0,				/* rightshift */
+	2,				/* size */
+	32,				/* bitsize */
+	FALSE,				/* pc_relative */
+	0,				/* bitpos */
+	complain_overflow_signed,	/* complain_on_overflow */
+	bfd_elf_generic_reloc,		/* special_function */
+	"R_RISCV_GPREL_ZCE_SDGP",		/* name */
+	FALSE,				/* partial_inplace */
+	0,				/* src_mask */
+	ENCODE_ZCE_SDGP_IMM (-1U),	/* dst_mask */
+	FALSE),			/* pcrel_offset */
+
+  /* 16 bits imm GP-relative load.  */
+  HOWTO (BFD_RELOC_RISCV_GPREL_LWGP,	/* type */
+	0,				/* rightshift */
+	2,				/* size */
+	32,				/* bitsize */
+	FALSE,				/* pc_relative */
+	0,				/* bitpos */
+	complain_overflow_signed,	/* complain_on_overflow */
+	bfd_elf_generic_reloc,		/* special_function */
+	"R_RISCV_GPREL_ZCE_LWGP",		/* name */
+	FALSE,				/* partial_inplace */
+	0,				/* src_mask */
+	ENCODE_ZCE_LWGP_IMM (-1U),	/* dst_mask */
+	FALSE),			/* pcrel_offset */
+
+  /* 17 bits imm GP-relative load.  */
+  HOWTO (BFD_RELOC_RISCV_GPREL_LDGP,	/* type */
+	0,				/* rightshift */
+	2,				/* size */
+	32,				/* bitsize */
+	FALSE,				/* pc_relative */
+	0,				/* bitpos */
+	complain_overflow_signed,	/* complain_on_overflow */
+	bfd_elf_generic_reloc,		/* special_function */
+	"R_RISCV_GPREL_ZCE_LDGP",		/* name */
+	FALSE,				/* partial_inplace */
+	0,				/* src_mask */
+	ENCODE_ZCE_LDGP_IMM (-1U),	/* dst_mask */
+	FALSE),			/* pcrel_offset */
 };
 
 /* A mapping from BFD reloc types to RISC-V ELF reloc types.  */
@@ -964,6 +1024,10 @@ static const struct elf_reloc_map riscv_reloc_map[] =
   { BFD_RELOC_RISCV_32_PCREL, R_RISCV_32_PCREL },
   { BFD_RELOC_RISCV_DECBNEZ, R_RISCV_DECBNEZ_BRANCH },
   { BFD_RELOC_RISCV_C_DECBNEZ, R_RISCV_C_DECBNEZ_BRANCH },
+  { BFD_RELOC_RISCV_GPREL_SWGP, R_RISCV_GPREL_ZCE_SWGP },
+  { BFD_RELOC_RISCV_GPREL_SDGP, R_RISCV_GPREL_ZCE_SDGP },
+  { BFD_RELOC_RISCV_GPREL_LWGP, R_RISCV_GPREL_ZCE_LWGP },
+  { BFD_RELOC_RISCV_GPREL_LDGP, R_RISCV_GPREL_ZCE_LDGP },
 };
 
 /* Given a BFD reloc type, return a howto structure.  */
