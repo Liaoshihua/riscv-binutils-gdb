@@ -1278,6 +1278,52 @@ riscv_apply_const_reloc (bfd_reloc_code_real_type reloc_type, bfd_vma value)
     }
 }
 
+/* Extra compress routine for Code Size Reduction Extension */
+void
+zce_compress_pass (struct riscv_cl_insn *ip, expressionS *address_expr,
+	     bfd_reloc_code_real_type *reloc_type)
+{
+  int rd;
+  long label_loc, insn_loc, offset;
+
+  /* only deal with decbnez to c.debnze currently */
+  if (*reloc_type != BFD_RELOC_RISCV_DECBNEZ)
+    return;
+
+  /* check if
+    addressing field
+    1. addressing expr is a label
+    2. the label is located above the inst (if it is defined)
+    3. the length of offset to label is valid
+    rd field
+	4. regno of rd ranges from 8 to 15 
+  */
+  if (address_expr->X_add_symbol
+	  && S_IS_DEFINED (address_expr->X_add_symbol))
+  {
+    label_loc = S_GET_VALUE (address_expr->X_add_symbol);
+    insn_loc = frag_more (0) - frag_now->fr_literal;
+    offset = insn_loc - label_loc;
+
+    /* extract rd regno */
+	rd = (ip->insn_opcode >> OP_SH_RD) & OP_MASK_RD;
+	/* offset in c.decbnez should be positive */
+	if (offset == 0)
+	  return;
+    /* check if the offset length is valid */
+    if (VALID_ZCE_C_DECBNEZ_IMM (offset)
+	  && (rd >= 8 && rd <= 15))
+    {
+      /* new encoding for c.decbnez */
+      ip->insn_opcode = MATCH_C_DECBNEZ \
+	    | ((rd-8) << OP_SH_CRS1S) \
+	    | ENCODE_ZCE_C_DECBNEZ_SCALE (EXTRACT_ZCE_DECBNEZ_SCALE (ip->insn_opcode)) \
+	    | ENCODE_ZCE_C_DECBNEZ_IMM (offset);
+      *reloc_type = BFD_RELOC_RISCV_C_DECBNEZ;
+    }
+  }
+}
+
 /* Output an instruction.  IP is the instruction information.
    ADDRESS_EXPR is an operand of the instruction to be used with
    RELOC_TYPE.  */
@@ -1291,32 +1337,13 @@ append_insn (struct riscv_cl_insn *ip, expressionS *address_expr,
 
   if (reloc_type != BFD_RELOC_UNUSED)
     {
-      if (reloc_type == BFD_RELOC_RISCV_DECBNEZ
-	    && address_expr->X_add_symbol
-	    && S_IS_DEFINED (address_expr->X_add_symbol))
-    {
-    long label_loc = S_GET_VALUE (address_expr->X_add_symbol);
-    long insn_loc = (frag_more (0) - frag_now->fr_literal);
-    long offset = insn_loc - label_loc;
-    int rd = (ip->insn_opcode >> OP_SH_RD) & OP_MASK_RD;
-    if (VALID_ZCE_C_DECBNEZ_IMM(offset)
-	    && (rd >= 8 && rd <= 15))
-  {
-    /* new encoding for c.decbnez */
-    ip->insn_opcode = MATCH_C_DECBNEZ \
-	| ((rd-8) << OP_SH_CRS1S) \
-	| ENCODE_ZCE_C_DECBNEZ_SCALE (EXTRACT_ZCE_DECBNEZ_SCALE (ip->insn_opcode)) \
-	| ENCODE_ZCE_C_DECBNEZ_IMM (offset);
-    reloc_type = BFD_RELOC_RISCV_C_DECBNEZ;
-  }
-    }
       reloc_howto_type *howto;
 
       gas_assert (address_expr);
       if (reloc_type == BFD_RELOC_12_PCREL
-	  || reloc_type == BFD_RELOC_RISCV_JMP
-	  || reloc_type == BFD_RELOC_RISCV_DECBNEZ
-	  || reloc_type == BFD_RELOC_RISCV_C_DECBNEZ)
+	    || reloc_type == BFD_RELOC_RISCV_JMP
+	    || reloc_type == BFD_RELOC_RISCV_DECBNEZ
+	    || reloc_type == BFD_RELOC_RISCV_C_DECBNEZ)
 	{
 	  int j = reloc_type == BFD_RELOC_RISCV_JMP;
 	  int best_case = riscv_insn_length (ip->insn_opcode);
@@ -2919,7 +2946,14 @@ md_assemble (char *str)
   if (insn.insn_mo->pinfo == INSN_MACRO)
     macro (&insn, &imm_expr, &imm_reloc);
   else
+  {
+    if (insn.insn_mo->insn_class == INSN_CLASS_ZCEE \
+	  || insn.insn_mo->insn_class == INSN_CLASS_ZCEA \
+	  || insn.insn_mo->insn_class == INSN_CLASS_ZCEB)
+      zce_compress_pass (&insn, &imm_expr, &imm_reloc);
     append_insn (&insn, &imm_expr, imm_reloc);
+  }
+    
 }
 
 const char *
@@ -3318,8 +3352,6 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	  bfd_vma target = S_GET_VALUE (fixP->fx_addsy) + *valP;
 	  bfd_vma delta = target - md_pcrel_from (fixP);
 	  /* check if it can be compressed to c.decbnez */
-	  bfd_vma insn = bfd_getl32 (buf);
-	  int rd = (insn >> OP_SH_RD) & OP_MASK_RD;
 	  bfd_putl32 (bfd_getl32 (buf) | ENCODE_ZCE_DECBNEZ_IMM (delta), buf);
 	}
       break;
