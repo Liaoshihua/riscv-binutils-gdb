@@ -336,6 +336,7 @@ enum riscv_insn_class
   INSN_CLASS_ZKR,
   INSN_CLASS_ZKSED,
   INSN_CLASS_ZKSH,
+  INSN_CLASS_ZMMUL,
 };
 
 /* This structure holds information for a particular instruction.  */

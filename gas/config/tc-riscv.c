@@ -155,6 +155,7 @@ static const struct riscv_ext_version ext_version_table[] =
   {"zksh",  ISA_SPEC_CLASS_DRAFT, 1, 0},
   {"zkt",   ISA_SPEC_CLASS_DRAFT, 1, 0},
 
+  {"zmmul",   ISA_SPEC_CLASS_DRAFT, 0, 1},
   /* Terminate the list.  */
   {NULL, 0, 0, 0}
 };
@@ -373,6 +374,9 @@ riscv_multi_subset_supports (enum riscv_insn_class insn_class)
       return riscv_subset_supports ("zksed");
     case INSN_CLASS_ZKSH:
       return riscv_subset_supports ("zksh");
+    
+    case INSN_CLASS_ZMMUL:
+      return riscv_subset_supports ("zmmul");
 
     default:
       as_fatal ("internal: unreachable");
