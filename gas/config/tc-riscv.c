@@ -2935,6 +2935,11 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
   return error;
 }
 
+static bfd_boolean cached_flag = FALSE;
+static expressionS imm_expr_cache;
+static bfd_reloc_code_real_type imm_reloc_cache;
+static struct riscv_cl_insn insn_cache;
+
 void
 md_assemble (char *str)
 {
@@ -2959,6 +2964,95 @@ md_assemble (char *str)
     {
       as_bad ("%s `%s'", error, str);
       return;
+    }
+
+  if (cached_flag)
+    {
+      int rd_addi =  EXTRACT_OPERAND (RD, insn_cache.insn_opcode);
+      int scale = imm_expr_cache.X_add_number;
+
+      if (insn.insn_mo->match == MATCH_BNE &&
+          EXTRACT_OPERAND (RS2, insn.insn_opcode) == 0 &&
+          (int)EXTRACT_OPERAND (RS1, insn.insn_opcode) == rd_addi)
+        {
+          switch (scale)
+          {
+            case -1: scale = 0b00; break;
+            case -2: scale = 0b01; break;
+            case -4: scale = 0b10; break;
+            case -8: scale = 0b11; break;
+            default:
+              as_bad (_("internal: invalid scale value %d for decbnez. Scale must be 1, 2, 4, 8. "), 
+                scale);
+              break;
+          }
+
+          insn.insn_opcode = MATCH_DECBNEZ | ENCODE_ZCE_DECBNEZ_SCALE (scale);
+          INSERT_OPERAND (RD, insn, rd_addi);
+          imm_reloc = BFD_RELOC_RISCV_DECBNEZ;
+	        fprintf(stderr, "merged an instruction!\n");
+        }
+      else if (insn.insn_mo->match == MATCH_C_BNEZ &&
+              (int)EXTRACT_OPERAND (CRS1S, insn.insn_opcode) == rd_addi - 8)
+        {
+          switch (scale)
+          {
+            case -1: scale = 0b00; break;
+            case -2: scale = 0b01; break;
+            case -4: scale = 0b10; break;
+            case -8: scale = 0b11; break;
+            default:
+              as_bad (_("internal: invalid scale value %ld for decbnez. Scale must be 1, 2, 4, 8. "), 
+                (int)EXTRACT_ZCE_DECBNEZ_SCALE (insn_cache.insn_opcode));
+              break;
+          }
+
+          insn.insn_opcode = MATCH_DECBNEZ | ENCODE_ZCE_DECBNEZ_SCALE (scale);
+          INSERT_OPERAND (RD, insn, rd_addi);
+          imm_reloc = BFD_RELOC_RISCV_DECBNEZ;
+	        fprintf(stderr, "merged an instruction!\n");
+        }
+      else
+        {
+          // fail to match, so append the cached insn
+          if (insn_cache.insn_mo->pinfo == INSN_MACRO)
+            macro (&insn_cache, &imm_expr_cache, &imm_reloc_cache);
+          else
+            append_insn (&insn_cache, &imm_expr_cache, imm_reloc_cache);
+	      }
+      // reset cache flag
+      cached_flag = FALSE;
+    }
+  else
+    {
+      // check first instruction
+      if (insn.insn_mo->match == MATCH_ADDI && 
+          EXTRACT_OPERAND (RD, insn.insn_opcode) == EXTRACT_OPERAND (RS1, insn.insn_opcode) &&
+	        ((int)imm_expr.X_add_number == -1 ||
+	         (int)imm_expr.X_add_number == -2 ||
+	         (int)imm_expr.X_add_number == -4 ||
+	         (int)imm_expr.X_add_number == -8))
+        {
+          cached_flag = TRUE;
+          memcpy((void*)&imm_expr_cache, (void*)&imm_expr, sizeof(expressionS));
+          memcpy((void*)&insn_cache, (void*)&insn, sizeof(struct riscv_cl_insn));
+          imm_reloc_cache = imm_reloc;
+          fprintf(stderr, "cached an instruction (addi)!\n");
+          return;
+        }
+      else if (insn.insn_mo->match == MATCH_C_ADDI && 
+	        ((int)imm_expr.X_add_number == -1 ||
+	         (int)imm_expr.X_add_number == -2 ||
+	         (int)imm_expr.X_add_number == -4 ||
+	         (int)imm_expr.X_add_number == -8))
+        {
+          cached_flag = TRUE;
+          memcpy((void*)&imm_expr_cache, (void*)&imm_expr, sizeof(expressionS));
+          memcpy((void*)&insn_cache, (void*)&insn, sizeof(struct riscv_cl_insn));
+          imm_reloc_cache = imm_reloc;
+          fprintf(stderr, "cached an instruction (c.addi)!\n");
+          return;
+        }
     }
 
   if (insn.insn_mo->pinfo == INSN_MACRO)
