@@ -2206,6 +2206,8 @@ riscv_multi_subset_supports (riscv_parse_subset_t *rps,
       return riscv_subset_supports (rps, "zksed");
     case INSN_CLASS_ZKSH:
       return riscv_subset_supports (rps, "zksh");
+	case INSN_CLASS_ZCEE:
+      return riscv_subset_supports (rps, "zcee");
     default:
       rps->error_handler
         (_("internal: unreachable INSN_CLASS_*"));
