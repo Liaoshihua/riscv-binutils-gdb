@@ -208,6 +208,9 @@ struct riscv_set_options
   int relax; /* Emit relocs the linker is allowed to relax.  */
   int arch_attr; /* Emit architecture and privileged elf attributes.  */
   int csr_check; /* Enable the CSR checking.  */
+  int zce_zext;  /* Enable C.ZEXT.B, C.ZEXT.H, C.ZEXT.W (RV64) */
+  int zce_sext;  /* Enable C.SEXT.B, C.SEXT.H, C.SEXT.W (RV64 pseudo) */
+  int zce_cmul;  /* Enable C.MUL */
 };
 
 static struct riscv_set_options riscv_opts =
@@ -217,6 +220,9 @@ static struct riscv_set_options riscv_opts =
   1, /* relax */
   DEFAULT_RISCV_ATTR, /* arch_attr */
   0, /* csr_check */
+  0, /* zce_zext */
+  0, /* zce_sext */
+  0  /* zce_cmul */
 };
 
 /* Enable or disable the rvc flags for riscv_opts.  Turn on the rvc flag
@@ -3767,6 +3773,12 @@ s_riscv_option (int x ATTRIBUTE_UNUSED)
     riscv_opts.csr_check = true;
   else if (strcmp (name, "no-csr-check") == 0)
     riscv_opts.csr_check = false;
+  else if (strcmp (name, "zce-cmul") == 0)
+    riscv_opts.zce_cmul = TRUE;
+  else if (strcmp (name, "zce-sext") == 0)
+    riscv_opts.zce_sext = TRUE;
+  else if (strcmp (name, "zce-zext") == 0)
+    riscv_opts.zce_zext = TRUE;
   else if (strncmp (name, "arch,", 5) == 0)
     {
       name += 5;
