@@ -1222,6 +1222,9 @@ static struct riscv_supported_ext riscv_supported_std_z_ext[] =
   {"zvl16384b",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
   {"zvl32768b",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
   {"zvl65536b",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
+  {"zcee",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
+  {"zcea",		ISA_SPEC_CLASS_DRAFT,		0, 50,  0 },
+  {"zceb",		ISA_SPEC_CLASS_DRAFT,		0, 50,  0 },
   {NULL, 0, 0, 0, 0}
 };
 
@@ -2412,7 +2415,13 @@ riscv_multi_subset_supports (riscv_parse_subset_t *rps,
 	      || riscv_subset_supports (rps, "zve64d")
 	      || riscv_subset_supports (rps, "zve64f")
 	      || riscv_subset_supports (rps, "zve32f"));
-    default:
+	case INSN_CLASS_ZCEE:
+		return riscv_subset_supports(rps, "zcee");
+    case INSN_CLASS_ZCEA:
+      return riscv_subset_supports (rps, "zcea");
+    case INSN_CLASS_ZCEB:
+      return riscv_subset_supports (rps, "zceb");
+	default:
       rps->error_handler
         (_("internal: unreachable INSN_CLASS_*"));
       return false;
