@@ -1167,6 +1167,14 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 	case 'p': used_bits |= ENCODE_BTYPE_IMM (-1U); break;
 	case 'q': used_bits |= ENCODE_STYPE_IMM (-1U); break;
 	case 'u': used_bits |= ENCODE_UTYPE_IMM (-1U); break;
+  case 'n': /* ZCE */
+    switch (*++oparg)
+	  {
+	    case 'f': break;
+	    default:
+	goto unknown_validate_operand;
+	  }
+	  break;
 	case 'z': break; /* Zero immediate.  */
 	case '[': break; /* Unused operand.  */
 	case ']': break; /* Unused operand.  */
@@ -2259,6 +2267,29 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
       if (!riscv_multi_subset_supports (&riscv_rps_as, insn->insn_class))
 	continue;
 
+       /* Skip c.mul if mzce-cmul is disable.  */
+      if (!riscv_opts.zce_cmul
+          && insn->insn_class == INSN_CLASS_ZCEE
+          && (insn->match == MATCH_C_MUL))
+	continue;
+
+      /* Skip c.zext.b, c.zext.h and c.zext.w if mzce-zext is disable.  */
+      if (!riscv_opts.zce_zext
+	  && insn->insn_class == INSN_CLASS_ZCEE
+	  && (insn->match == MATCH_C_ZEXT_B
+	    || insn->match == MATCH_C_ZEXT_H
+	    || insn->match == MATCH_C_ZEXT_W))
+	continue;
+
+      /* Skip c.sext.b, c.sext.h and c.sext.w if mzce-sext is disable.  */
+      if (!riscv_opts.zce_sext
+	  && insn->insn_class == INSN_CLASS_ZCEE
+	  && (insn->match == MATCH_C_SEXT_B
+	    || insn->match == MATCH_C_SEXT_H
+	    || insn->match == MATCH_C_ADDIW))
+	continue;
+
+
       /* Reset error message of the previous round.  */
       error = _("illegal operands");
       create_insn (ip, insn);
@@ -3168,6 +3199,24 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 	      asarg = expr_end;
 	      imm_expr->X_op = O_absent;
 	      continue;
+
+      case 'n':
+	      switch (*++oparg)
+	        {
+            case 'f':
+              if (my_getSmallExpression (imm_expr, imm_reloc, asarg, p)
+                || imm_expr->X_op != O_constant
+		            || imm_expr->X_add_number != 255)
+              break;
+            asarg = expr_end;
+            imm_expr->X_op = O_absent;
+		        continue;
+		        default:
+		          as_bad (_("internal: unknown ZCE 32 bits instruction "
+		              "field specifier `n%c'"), opargStart);
+		          break;
+		        }
+	      break;
 
 	    default:
 	    unknown_riscv_ip_operand:
