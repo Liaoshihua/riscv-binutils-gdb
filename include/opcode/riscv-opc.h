@@ -1987,6 +1987,21 @@
 #define MASK_VDOTUVV  0xfc00707f
 #define MATCH_VFDOTVV  0xe4001057
 #define MASK_VFDOTVV  0xfc00707f
+/* ZCE */
+#define MATCH_C_SEXT_B 0x8004
+#define MASK_C_SEXT_B 0xfc7f
+#define MATCH_C_SEXT_H 0x800c
+#define MASK_C_SEXT_H 0xfc7f
+#define MATCH_C_ZEXT_B 0x8000
+#define MASK_C_ZEXT_B 0xfc7f
+#define MATCH_C_ZEXT_H 0x8008
+#define MASK_C_ZEXT_H 0xfc7f
+#define MATCH_C_ZEXT_W 0x8010
+#define MASK_C_ZEXT_W 0xfc7f
+#define MATCH_C_MUL 0x9c41
+#define MASK_C_MUL 0xfc63
+#define MATCH_C_NOT 0x801c
+#define MASK_C_NOT 0xfc7f
 /* Svinval instruction.  */
 #define MATCH_SINVAL_VMA 0x16000073
 #define MASK_SINVAL_VMA 0xfe007fff

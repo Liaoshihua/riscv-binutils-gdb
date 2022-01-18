@@ -1161,6 +1161,14 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 	case 'p': used_bits |= ENCODE_BTYPE_IMM (-1U); break;
 	case 'q': used_bits |= ENCODE_STYPE_IMM (-1U); break;
 	case 'u': used_bits |= ENCODE_UTYPE_IMM (-1U); break;
+  case 'n': /* ZCB */\
+    switch (*++oparg)
+	    {
+	      case 'f': break;
+	      default:
+	      goto unknown_validate_operand;
+	    }
+	  break; /*End of ZCB */
 	case 'z': break; /* Zero immediate.  */
 	case '[': break; /* Unused operand.  */
 	case ']': break; /* Unused operand.  */
@@ -3162,6 +3170,24 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 	      asarg = expr_end;
 	      imm_expr->X_op = O_absent;
 	      continue;
+
+      case 'n':
+	      switch (*++oparg)
+	        {
+            case 'f':
+              if (my_getSmallExpression (imm_expr, imm_reloc, asarg, p)
+                || imm_expr->X_op != O_constant
+		            || imm_expr->X_add_number != 255)
+              break;
+            asarg = expr_end;
+            imm_expr->X_op = O_absent;
+		        continue;
+		        default:
+		          as_bad (_("internal: unknown ZCE 32 bits instruction "
+		              "field specifier `n%c'"), opargStart);
+		          break;
+		        }
+	      break;
 
 	    default:
 	    unknown_riscv_ip_operand:
