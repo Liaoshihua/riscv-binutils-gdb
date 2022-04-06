@@ -222,6 +222,7 @@ struct riscv_set_options
   int relax; /* Emit relocs the linker is allowed to relax.  */
   int arch_attr; /* Emit architecture and privileged elf attributes.  */
   int csr_check; /* Enable the CSR checking.  */
+  int tso; /* Use TSO model.  */
 };
 
 static struct riscv_set_options riscv_opts =
@@ -231,6 +232,7 @@ static struct riscv_set_options riscv_opts =
   1, /* relax */
   DEFAULT_RISCV_ATTR, /* arch_attr */
   0, /* csr_check */
+  0, /* tso */
 };
 
 /* Enable or disable the rvc flags for riscv_opts.  Turn on the rvc flag
@@ -243,6 +245,18 @@ riscv_set_rvc (bool rvc_value)
     elf_flags |= EF_RISCV_RVC;
 
   riscv_opts.rvc = rvc_value;
+}
+
+/* Enable or disable the tso flags for riscv_opts.  Turn on the tso flag
+   for elf_flags once we have enabled ztso extension.  */
+
+static void
+riscv_set_tso (bool tso_value)
+{
+  if (tso_value)
+    elf_flags |= EF_RISCV_TSO;
+
+  riscv_opts.tso = tso_value;
 }
 
 /* This linked list records all enabled extensions, which are parsed from
@@ -295,6 +309,9 @@ riscv_set_arch (const char *s)
   riscv_set_rvc (false);
   if (riscv_subset_supports (&riscv_rps_as, "c"))
     riscv_set_rvc (true);
+  
+  if (riscv_subset_supports (&riscv_rps_as, "ztso"))
+    riscv_set_tso (true);
 }
 
 /* Indicate -mabi option is explictly set.  */

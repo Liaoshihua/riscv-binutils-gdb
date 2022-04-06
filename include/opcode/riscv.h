@@ -388,6 +388,7 @@ enum riscv_insn_class
   INSN_CLASS_V,
   INSN_CLASS_ZVEF,
   INSN_CLASS_SVINVAL,
+  INSN_CLASS_ZTSO,
 };
 
 /* This structure holds information for a particular instruction.  */
