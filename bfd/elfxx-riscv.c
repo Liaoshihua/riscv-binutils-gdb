@@ -1116,6 +1116,9 @@ static struct riscv_implicit_subset riscv_implicit_subsets[] =
   {"zks", "zbkx",	check_implicit_always},
   {"zks", "zksed",	check_implicit_always},
   {"zks", "zksh",	check_implicit_always},
+  {"p", "zbpbo",	check_implicit_always},
+  {"p", "zpn",		check_implicit_always},
+  {"p", "zpsf",		check_implicit_always},
   {NULL, NULL, NULL}
 };
 
@@ -1171,7 +1174,7 @@ static struct riscv_supported_ext riscv_supported_std_ext[] =
   {"k",		ISA_SPEC_CLASS_NONE, RISCV_UNKNOWN_VERSION, RISCV_UNKNOWN_VERSION, 0 },
   {"j",		ISA_SPEC_CLASS_NONE, RISCV_UNKNOWN_VERSION, RISCV_UNKNOWN_VERSION, 0 },
   {"t",		ISA_SPEC_CLASS_NONE, RISCV_UNKNOWN_VERSION, RISCV_UNKNOWN_VERSION, 0 },
-  {"p",		ISA_SPEC_CLASS_NONE, RISCV_UNKNOWN_VERSION, RISCV_UNKNOWN_VERSION, 0 },
+  {"p",		ISA_SPEC_CLASS_DRAFT, 	0, 9, 10 },
   {"v",		ISA_SPEC_CLASS_DRAFT,		1, 0, 0 },
   {"n",		ISA_SPEC_CLASS_NONE, RISCV_UNKNOWN_VERSION, RISCV_UNKNOWN_VERSION, 0 },
   {NULL, 0, 0, 0, 0}
@@ -1222,6 +1225,9 @@ static struct riscv_supported_ext riscv_supported_std_z_ext[] =
   {"zvl16384b",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
   {"zvl32768b",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
   {"zvl65536b",		ISA_SPEC_CLASS_DRAFT,		1, 0,  0 },
+  {"zbpbo",		ISA_SPEC_CLASS_DRAFT,		0, 9,  10 },
+  {"zpn",		ISA_SPEC_CLASS_DRAFT,		0, 0,  10 },
+  {"zpsf",		ISA_SPEC_CLASS_DRAFT,		0, 9,  10 },
   {NULL, 0, 0, 0, 0}
 };
 
@@ -2408,6 +2414,12 @@ riscv_multi_subset_supports (riscv_parse_subset_t *rps,
 	      || riscv_subset_supports (rps, "zve32f"));
     case INSN_CLASS_SVINVAL:
       return riscv_subset_supports (rps, "svinval");
+	case INSN_CLASS_ZBPBO:
+      return riscv_subset_supports (rps, "zbpbo");
+	case INSN_CLASS_ZPN:
+      return riscv_subset_supports (rps, "zpn");
+	case INSN_CLASS_ZPSF:
+      return riscv_subset_supports (rps, "zpsf");
     default:
       rps->error_handler
         (_("internal: unreachable INSN_CLASS_*"));
