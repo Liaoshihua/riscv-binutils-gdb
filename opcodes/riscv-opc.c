@@ -125,6 +125,9 @@ const char * const riscv_vma[2] =
 #define MATCH_SHAMT_REV8_64 (0b111000 << OP_SH_SHAMT)
 #define MATCH_SHAMT_BREV8 (0b00111 << OP_SH_SHAMT)
 #define MATCH_SHAMT_ZIP_32 (0b1111 << OP_SH_SHAMT)
+#define MATCH_SHAMT_REV_32 (0b11111 << 20)
+#define MATCH_SHAMT_REV_64 (0b111111 << 20)
+#define MATCH_SHAMT_REV8_H (0b1000 << 20)
 #define MATCH_SHAMT_ORC_B (0b00111 << OP_SH_SHAMT)
 #define MASK_VD (OP_MASK_VD << OP_SH_VD)
 #define MASK_VS1 (OP_MASK_VS1 << OP_SH_VS1)
@@ -851,6 +854,7 @@ const struct riscv_opcode riscv_opcodes[] =
 
 /* Zbb or zbkb instructions.  */
 {"clz",        0, INSN_CLASS_ZBB,  "d,s",   MATCH_CLZ, MASK_CLZ, match_opcode, 0 },
+{"clz",        0, INSN_CLASS_ZBPBO,"d,s",   MATCH_CLZ, MASK_CLZ, match_opcode, 0 },
 {"ctz",        0, INSN_CLASS_ZBB,  "d,s",   MATCH_CTZ, MASK_CTZ, match_opcode, 0 },
 {"cpop",       0, INSN_CLASS_ZBB,  "d,s",   MATCH_CPOP, MASK_CPOP, match_opcode, 0 },
 {"min",        0, INSN_CLASS_ZBB,  "d,s,t", MATCH_MIN, MASK_MIN, match_opcode, 0 },
@@ -1752,6 +1756,17 @@ const struct riscv_opcode riscv_opcodes[] =
 {"hsv.h",       0, INSN_CLASS_I, "t,0(s)", MATCH_HSV_H, MASK_HSV_H, match_opcode, INSN_DREF|INSN_2_BYTE },
 {"hsv.w",       0, INSN_CLASS_I, "t,0(s)", MATCH_HSV_W, MASK_HSV_W, match_opcode, INSN_DREF|INSN_4_BYTE },
 {"hsv.d",      64, INSN_CLASS_I, "t,0(s)", MATCH_HSV_D, MASK_HSV_D, match_opcode, INSN_DREF|INSN_8_BYTE },
+
+/* Zbpbo instructions */
+{"cmix",       0, INSN_CLASS_ZBPBO, "d,t,s,r", MATCH_CMIX, MASK_CMIX, match_opcode, 0 },
+{"rev8.h",     0, INSN_CLASS_ZBPBO, "d,s",     MATCH_GREVI|MATCH_SHAMT_REV8_H, MASK_GREVI|(OP_MASK_SHAMT << 20), match_opcode, 0 },
+{"rev",       32, INSN_CLASS_ZBPBO, "d,s",     MATCH_GREVI|MATCH_SHAMT_REV_32, MASK_GREVI|(OP_MASK_SHAMT << 20), match_opcode, 0 },
+{"rev",       64, INSN_CLASS_ZBPBO, "d,s",     MATCH_GREVI|MATCH_SHAMT_REV_64, MASK_GREVI|(OP_MASK_SHAMT << 20), match_opcode, 0 },
+{"packu",      0, INSN_CLASS_ZBPBO, "d,s,t",   MATCH_PACKU, MASK_PACKU, match_opcode, 0 },
+{"pack",       0, INSN_CLASS_ZBPBO, "d,s,t",   MATCH_PACK, MASK_PACK, match_opcode, 0 },
+{"fsr",       32, INSN_CLASS_ZBPBO, "d,s,r,t", MATCH_FSR, MASK_FSR, match_opcode, 0 },
+{"fsri",      32, INSN_CLASS_ZBPBO, "d,s,r,>", MATCH_FSRI, MASK_FSRI, match_opcode, 0 },
+{"fsrw",      64, INSN_CLASS_ZBPBO, "d,s,r,t", MATCH_FSRW, MASK_FSRW, match_opcode, 0 },
 
 /* Terminate the list.  */
 {0, 0, INSN_CLASS_NONE, 0, 0, 0, 0, 0}
