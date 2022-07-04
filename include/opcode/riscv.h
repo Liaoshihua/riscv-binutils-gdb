@@ -396,6 +396,7 @@ enum riscv_insn_class
   INSN_CLASS_ZICBOP,
   INSN_CLASS_ZICBOZ,
   INSN_CLASS_H,
+  INSN_CLASS_M_OR_ZMMUL,
 };
 
 /* This structure holds information for a particular instruction.  */
