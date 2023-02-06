@@ -377,8 +377,6 @@ riscv_set_abi_by_arch (void)
       gas_assert (abi_xlen != 0 && xlen != 0 && float_abi != FLOAT_ABI_DEFAULT);
       if (abi_xlen > xlen)
 	as_bad ("can't have %d-bit ABI on %d-bit ISA", abi_xlen, xlen);
-      else if (abi_xlen < xlen)
-	as_bad ("%d-bit ABI not yet supported on %d-bit ISA", abi_xlen, xlen);
 
       if (riscv_subset_supports (&riscv_rps_as, "e") && !rve_abi)
 	as_bad ("only the ilp32e ABI is supported for e extension");
@@ -704,9 +702,9 @@ const char *
 riscv_target_format (void)
 {
   if (target_big_endian)
-    return xlen == 64 ? "elf64-bigriscv" : "elf32-bigriscv";
+    return abi_xlen == 64 ? "elf64-bigriscv" : "elf32-bigriscv";
   else
-    return xlen == 64 ? "elf64-littleriscv" : "elf32-littleriscv";
+    return abi_xlen == 64 ? "elf64-littleriscv" : "elf32-littleriscv";
 }
 
 /* Return the length of instruction INSN.  */
@@ -1489,7 +1487,7 @@ init_opcode_hash (const struct riscv_opcode *opcodes,
 void
 md_begin (void)
 {
-  unsigned long mach = xlen == 64 ? bfd_mach_riscv64 : bfd_mach_riscv32;
+  unsigned long mach = abi_xlen == 64 ? bfd_mach_riscv64 : bfd_mach_riscv32;
 
   if (! bfd_set_arch_mach (stdoutput, bfd_arch_riscv, mach))
     as_warn (_("could not set architecture and machine"));
