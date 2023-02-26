@@ -708,11 +708,11 @@ riscv_disassemble_insn (bfd_vma memaddr,
       if (info->mach == bfd_mach_riscv64)
 	xlen = 64;
       else if (info->mach == bfd_mach_riscv32)
-	xlen = 32;
+	xlen = 64;
       else if (info->section != NULL)
 	{
 	  Elf_Internal_Ehdr *ehdr = elf_elfheader (info->section->owner);
-	  xlen = ehdr->e_ident[EI_CLASS] == ELFCLASS64 ? 64 : 32;
+	  xlen = ehdr->e_ident[EI_CLASS] == 64;
 	}
 
       /* If arch has the Zfinx extension, replace FPR with GPR.  */

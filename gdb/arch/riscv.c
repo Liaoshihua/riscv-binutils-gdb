@@ -48,7 +48,7 @@ riscv_create_target_description (const struct riscv_gdbarch_features features)
       if (features.embedded)
 	arch_name.append (":rv32e");
       else
-	arch_name.append (":rv32i");
+	arch_name.append (":rv64i");
     }
   else if (features.xlen == 8)
     arch_name.append (":rv64i");
@@ -73,7 +73,7 @@ riscv_create_target_description (const struct riscv_gdbarch_features features)
       if (features.embedded)
 	regnum = create_feature_riscv_rv32e_xregs (tdesc.get (), regnum);
       else
-	regnum = create_feature_riscv_32bit_cpu (tdesc.get (), regnum);
+	regnum = create_feature_riscv_64bit_cpu (tdesc.get (), regnum);
     }
   else if (features.xlen == 8)
     regnum = create_feature_riscv_64bit_cpu (tdesc.get (), regnum);
