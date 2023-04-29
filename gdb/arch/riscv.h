@@ -52,8 +52,17 @@ struct riscv_gdbarch_features
      any vector size.  */
   int vlen = 0;
 
+  /* The size of the pointer in bytes.  This is either 4 (ILP32), or 8
+     (ILP64).  No other value is valid.  Initialise to the
+     invalid 0 value so we can spot if one of these is used
+     uninitialised.  */
+  int abi_xlen = 0;  
+
   /* When true this target is RV32E.  */
   bool embedded = false;
+
+  /* When true this target is rv64x32.  */
+  bool is_x32 = false;
 
   /* Track if the target description has an fcsr, fflags, and frm
      registers.  Some targets provide all these in their target
@@ -68,6 +77,7 @@ struct riscv_gdbarch_features
   bool operator== (const struct riscv_gdbarch_features &rhs) const
   {
     return (xlen == rhs.xlen && flen == rhs.flen
+       && abi_xlen == rhs.abi_xlen && is_x32 == rhs.is_x32
 	    && embedded == rhs.embedded && vlen == rhs.vlen
 	    && has_fflags_reg == rhs.has_fflags_reg
 	    && has_frm_reg == rhs.has_frm_reg
@@ -87,9 +97,11 @@ struct riscv_gdbarch_features
 		       | (has_fflags_reg ? 1 : 0) << 11
 		       | (has_frm_reg ? 1 : 0) << 12
 		       | (has_fcsr_reg ? 1 : 0) << 13
+             | (is_x32 ? 1 : 0) << 14
 		       | (xlen & 0x1f) << 5
 		       | (flen & 0x1f) << 0
-		       | (vlen & 0xfff) << 14);
+             | (abi_xlen & 0x1f) << 15
+		       | (vlen & 0xfff) << 20);
     return val;
   }
 };

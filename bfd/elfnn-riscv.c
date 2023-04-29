@@ -3577,13 +3577,13 @@ riscv_merge_arch_attr_info (bfd *ibfd, char *in_arch, char *out_arch)
     return NULL;
 
   /* Checking XLEN.  */
-  if (xlen_out != xlen_in)
+  /*if (xlen_out != xlen_in)
     {
       _bfd_error_handler
 	(_("error: %pB: ISA string of input (%s) doesn't match "
 	   "output (%s)"), ibfd, in_arch, out_arch);
       return NULL;
-    }
+    }*/
 
   /* Merge subset list.  */
   in = in_subsets.head;
@@ -3597,23 +3597,23 @@ riscv_merge_arch_attr_info (bfd *ibfd, char *in_arch, char *out_arch)
   if (!riscv_merge_multi_letter_ext (&in, &out))
     return NULL;
 
-  if (xlen_in != xlen_out)
+  /*if (xlen_in != xlen_out)
     {
       _bfd_error_handler
 	(_("error: %pB: XLEN of input (%u) doesn't match "
 	   "output (%u)"), ibfd, xlen_in, xlen_out);
       return NULL;
-    }
+    }*/
 
-  if (xlen_in != ARCH_SIZE)
+  /*if (xlen_in != ARCH_SIZE)
     {
       _bfd_error_handler
 	(_("error: %pB: unsupported XLEN (%u), you might be "
 	   "using wrong emulation"), ibfd, xlen_in);
       return NULL;
-    }
+    }*/
 
-  merged_arch_str = riscv_arch_str (ARCH_SIZE, &merged_subsets);
+  merged_arch_str = riscv_arch_str (xlen_in, &merged_subsets);
 
   /* Release the subset lists.  */
   riscv_release_subset_list (&in_subsets);
@@ -3883,6 +3883,9 @@ _bfd_riscv_elf_merge_private_bfd_data (bfd *ibfd, struct bfd_link_info *info)
 
   /* Allow linking TSO and non-TSO, and keep the TSO flag.  */
   elf_elfheader (obfd)->e_flags |= new_flags & EF_RISCV_TSO;
+
+  /* Allow linking X32 and non-X32, and keep the X32 flag.  */
+  elf_elfheader (obfd)->e_flags |= new_flags & EF_RISCV_X32;
 
   return true;
 
@@ -5200,7 +5203,12 @@ riscv_elf_object_p (bfd *abfd)
   /* There are only two mach types in RISCV currently.  */
   if (strcmp (abfd->xvec->name, "elf32-littleriscv") == 0
       || strcmp (abfd->xvec->name, "elf32-bigriscv") == 0)
-    bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv32);
+	{
+		if (elf_elfheader (abfd)->e_flags & EF_RISCV_X32)
+	bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv64x32);
+		else
+	bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv32);
+	}
   else
     bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv64);
 

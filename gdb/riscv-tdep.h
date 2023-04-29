@@ -150,6 +150,9 @@ extern int riscv_abi_flen (struct gdbarch *gdbarch);
    argument registers.  */
 extern bool riscv_abi_embedded (struct gdbarch *gdbarch);
 
+/* Return true if GDBARCH is using the 64ilp32 x-regs abi */
+extern bool riscv_abi_x32 (struct gdbarch *gdbarch);
+
 /* Single step based on where the current instruction will take us.  */
 extern std::vector<CORE_ADDR> riscv_software_single_step
   (struct regcache *regcache);
