@@ -63,6 +63,9 @@
 
 #define RISCV_ATTRIBUTES_SECTION_NAME ".riscv.attributes"
 
+#define ABI_X32_P(abfd) \
+  ((elf_elfheader (abfd)->e_flags & EF_RISCV_X32) != 0)
+
 /* RISC-V ELF linker hash entry.  */
 
 struct riscv_elf_link_hash_entry
@@ -103,9 +106,12 @@ struct _bfd_riscv_elf_obj_tdata
    && elf_tdata (bfd) != NULL				\
    && elf_object_id (bfd) == RISCV_ELF_DATA)
 
+static bool ABI_X32;
+
 static bool
 elfNN_riscv_mkobject (bfd *abfd)
 {
+  ABI_X32 = elf_elfheader (abfd)->e_flags & EF_RISCV_X32;
   return bfd_elf_allocate_object (abfd,
 				  sizeof (struct _bfd_riscv_elf_obj_tdata),
 				  RISCV_ELF_DATA);
@@ -1610,7 +1616,7 @@ perform_relocation (const reloc_howto_type *howto,
     case R_RISCV_GOT_HI20:
     case R_RISCV_TLS_GOT_HI20:
     case R_RISCV_TLS_GD_HI20:
-      if (ARCH_SIZE > 32 && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
+      if ((ARCH_SIZE > 32 || ABI_X32_P(input_bfd)) && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
 	return bfd_reloc_overflow;
       value = ENCODE_UTYPE_IMM (RISCV_CONST_HIGH_PART (value));
       break;
@@ -1633,7 +1639,7 @@ perform_relocation (const reloc_howto_type *howto,
 
     case R_RISCV_CALL:
     case R_RISCV_CALL_PLT:
-      if (ARCH_SIZE > 32 && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
+      if ((ARCH_SIZE > 32 || ABI_X32_P(input_bfd)) && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
 	return bfd_reloc_overflow;
       value = ENCODE_UTYPE_IMM (RISCV_CONST_HIGH_PART (value))
 	      | (ENCODE_ITYPE_IMM (value) << 32);
@@ -4326,7 +4332,7 @@ _bfd_riscv_relax_call (bfd *abfd, asection *sec, asection *sym_sec,
   rvc = rvc && VALID_CJTYPE_IMM (foff);
 
   /* C.J exists on RV32 and RV64, but C.JAL is RV32-only.  */
-  rvc = rvc && (rd == 0 || (rd == X_RA && ARCH_SIZE == 32));
+  rvc = rvc && (rd == 0 || (rd == X_RA && ARCH_SIZE == 32 && !ABI_X32_P(abfd)));
 
   if (rvc)
     {
@@ -5030,7 +5036,7 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
   return ret;
 }
 
-#if ARCH_SIZE == 32
+#if ARCH_SIZE == 32 && !ABI_X32
 # define PRSTATUS_SIZE			204
 # define PRSTATUS_OFFSET_PR_CURSIG	12
 # define PRSTATUS_OFFSET_PR_PID		24
@@ -5204,7 +5210,7 @@ riscv_elf_object_p (bfd *abfd)
   if (strcmp (abfd->xvec->name, "elf32-littleriscv") == 0
       || strcmp (abfd->xvec->name, "elf32-bigriscv") == 0)
 	{
-		if (elf_elfheader (abfd)->e_flags & EF_RISCV_X32)
+		if (ABI_X32_P(abfd))
 	bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv64x32);
 		else
 	bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv32);
