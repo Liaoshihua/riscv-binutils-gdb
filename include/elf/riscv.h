@@ -114,6 +114,9 @@ END_RELOC_NUMBERS (R_RISCV_max)
 /* File uses the 32E base integer instruction.  */
 #define EF_RISCV_RVE 0x0008
 
+/* File uses the X32 model. */
+#define EF_RISCV_X32 0x0020
+
 /* The name of the global pointer symbol.  */
 #define RISCV_GP_SYMBOL "__global_pointer$"
 

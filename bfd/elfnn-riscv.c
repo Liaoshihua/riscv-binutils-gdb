@@ -63,6 +63,11 @@
 
 #define RISCV_ATTRIBUTES_SECTION_NAME ".riscv.attributes"
 
+#define ABI_X32_P(abfd) \
+	((elf_elfheader (abfd)->e_flags & EF_RISCV_X32) != 0)
+
+static bool ABI_X32 = false;
+
 /* RISC-V ELF linker hash entry.  */
 
 struct riscv_elf_link_hash_entry
@@ -1638,7 +1643,7 @@ perform_relocation (const reloc_howto_type *howto,
     case R_RISCV_GOT_HI20:
     case R_RISCV_TLS_GOT_HI20:
     case R_RISCV_TLS_GD_HI20:
-      if (ARCH_SIZE > 32 && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
+      if ((ARCH_SIZE > 32 || ABI_X32_P(input_bfd)) && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
 	return bfd_reloc_overflow;
       value = ENCODE_UTYPE_IMM (RISCV_CONST_HIGH_PART (value));
       break;
@@ -1661,7 +1666,7 @@ perform_relocation (const reloc_howto_type *howto,
 
     case R_RISCV_CALL:
     case R_RISCV_CALL_PLT:
-      if (ARCH_SIZE > 32 && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
+      if ((ARCH_SIZE > 32 || ABI_X32_P(input_bfd))&& !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
 	return bfd_reloc_overflow;
       value = ENCODE_UTYPE_IMM (RISCV_CONST_HIGH_PART (value))
 	      | (ENCODE_ITYPE_IMM (value) << 32);
@@ -3582,7 +3587,7 @@ riscv_merge_arch_attr_info (bfd *ibfd, char *in_arch, char *out_arch)
     return NULL;
 
   /* Checking XLEN.  */
-  if (xlen_out != xlen_in)
+  if (xlen_out != xlen_in && !ABI_X32_P(ibfd))
     {
       _bfd_error_handler
 	(_("error: %pB: ISA string of input (%s) doesn't match "
@@ -3602,7 +3607,7 @@ riscv_merge_arch_attr_info (bfd *ibfd, char *in_arch, char *out_arch)
   if (!riscv_merge_multi_letter_ext (&in, &out))
     return NULL;
 
-  if (xlen_in != xlen_out)
+  if (xlen_in != xlen_out && !ABI_X32_P(ibfd))
     {
       _bfd_error_handler
 	(_("error: %pB: XLEN of input (%u) doesn't match "
@@ -3610,7 +3615,7 @@ riscv_merge_arch_attr_info (bfd *ibfd, char *in_arch, char *out_arch)
       return NULL;
     }
 
-  if (xlen_in != ARCH_SIZE)
+  if (xlen_in != ARCH_SIZE && !ABI_X32_P(ibfd))
     {
       _bfd_error_handler
 	(_("error: %pB: unsupported XLEN (%u), you might be "
@@ -3618,7 +3623,7 @@ riscv_merge_arch_attr_info (bfd *ibfd, char *in_arch, char *out_arch)
       return NULL;
     }
 
-  merged_arch_str = riscv_arch_str (ARCH_SIZE, &merged_subsets);
+  merged_arch_str = riscv_arch_str (xlen_in, &merged_subsets);
 
   /* Release the subset lists.  */
   riscv_release_subset_list (&in_subsets);
@@ -3885,6 +3890,8 @@ _bfd_riscv_elf_merge_private_bfd_data (bfd *ibfd, struct bfd_link_info *info)
 
   /* Allow linking RVC and non-RVC, and keep the RVC flag.  */
   elf_elfheader (obfd)->e_flags |= new_flags & EF_RISCV_RVC;
+  /* Allow linking X32 and non-X32, and keep the X32 flag.  */
+  elf_elfheader (obfd)->e_flags |= new_flags & EF_RISCV_X32;
 
   return true;
 
@@ -4223,7 +4230,7 @@ _bfd_riscv_relax_call (bfd *abfd, asection *sec, asection *sym_sec,
   rvc = rvc && VALID_CJTYPE_IMM (foff);
 
   /* C.J exists on RV32 and RV64, but C.JAL is RV32-only.  */
-  rvc = rvc && (rd == 0 || (rd == X_RA && ARCH_SIZE == 32));
+  rvc = rvc && (rd == 0 || (rd == X_RA && ARCH_SIZE == 32 && !ABI_X32_P(abfd)));
 
   if (rvc)
     {
@@ -4942,7 +4949,7 @@ _bfd_riscv_relax_section (bfd *abfd, asection *sec,
   return ret;
 }
 
-#if ARCH_SIZE == 32
+#if ARCH_SIZE == 32 && !ABI_X32
 # define PRSTATUS_SIZE			204
 # define PRSTATUS_OFFSET_PR_CURSIG	12
 # define PRSTATUS_OFFSET_PR_PID		24
@@ -5112,12 +5119,15 @@ riscv_elf_grok_psinfo (bfd *abfd, Elf_Internal_Note *note)
 static bool
 riscv_elf_object_p (bfd *abfd)
 {
-  /* There are only two mach types in RISCV currently.  */
-  if (strcmp (abfd->xvec->name, "elf32-littleriscv") == 0
-      || strcmp (abfd->xvec->name, "elf32-bigriscv") == 0)
-    bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv32);
-  else
-    bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv64);
+	ABI_X32 = ABI_X32_P(abfd);
+   /* There are only three mach types in RISCV currently.  */
+   if (ABI_X32_P(abfd))
+     bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv64x32);
+   else if (strcmp (abfd->xvec->name, "elf32-littleriscv") == 0
+       	|| strcmp (abfd->xvec->name, "elf32-bigriscv") == 0)
+     bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv32);
+   else
+     bfd_default_set_arch_mach (abfd, bfd_arch_riscv, bfd_mach_riscv64);
 
   return true;
 }

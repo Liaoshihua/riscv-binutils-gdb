@@ -231,6 +231,12 @@ riscv_set_rvc (bool rvc_value)
   riscv_opts.rvc = rvc_value;
 }
 
+static void
+riscv_set_x32 (void)
+{
+  elf_flags |= EF_RISCV_X32;
+}
+
 /* This linked list records all enabled extensions, which are parsed from
    the architecture string.  The architecture string can be set by the
    -march option, the elf architecture attributes, and the --with-arch
@@ -318,7 +324,7 @@ riscv_set_abi_by_arch (void)
       gas_assert (abi_xlen != 0 && xlen != 0 && float_abi != FLOAT_ABI_DEFAULT);
       if (abi_xlen > xlen)
 	as_bad ("can't have %d-bit ABI on %d-bit ISA", abi_xlen, xlen);
-      else if (abi_xlen < xlen)
+      else if (abi_xlen < xlen && (abi_xlen != 32 && xlen != 64))
 	as_bad ("%d-bit ABI not yet supported on %d-bit ISA", abi_xlen, xlen);
 
       if (riscv_subset_supports (&riscv_rps_as, "e") && !rve_abi)
@@ -344,6 +350,9 @@ riscv_set_abi_by_arch (void)
 
   if (rve_abi)
     elf_flags |= EF_RISCV_RVE;
+
+  if (abi_xlen == 32 && xlen == 64)
+    riscv_set_x32 ();
 }
 
 /* Handle of the OPCODE hash table.  */
@@ -576,9 +585,9 @@ const char *
 riscv_target_format (void)
 {
   if (target_big_endian)
-    return xlen == 64 ? "elf64-bigriscv" : "elf32-bigriscv";
+    return abi_xlen == 64 ? "elf64-bigriscv" : "elf32-bigriscv";
   else
-    return xlen == 64 ? "elf64-littleriscv" : "elf32-littleriscv";
+    return abi_xlen == 64 ? "elf64-littleriscv" : "elf32-littleriscv";
 }
 
 /* Return the length of instruction INSN.  */
@@ -1257,7 +1266,8 @@ init_opcode_hash (const struct riscv_opcode *opcodes,
 void
 md_begin (void)
 {
-  unsigned long mach = xlen == 64 ? bfd_mach_riscv64 : bfd_mach_riscv32;
+  unsigned long mach = xlen == 64 ? 
+      (abi_xlen == 32 ? bfd_mach_riscv64x32 : bfd_mach_riscv64) : bfd_mach_riscv32;
 
   if (! bfd_set_arch_mach (stdoutput, bfd_arch_riscv, mach))
     as_warn (_("could not set architecture and machine"));
@@ -4423,7 +4433,8 @@ s_riscv_attribute (int ignored ATTRIBUTE_UNUSED)
       if (old_xlen != xlen)
 	{
 	  /* We must re-init bfd again if xlen is changed.  */
-	  unsigned long mach = xlen == 64 ? bfd_mach_riscv64 : bfd_mach_riscv32;
+	  unsigned long mach = xlen == 64 ? 
+      (abi_xlen == 32 ? bfd_mach_riscv64x32 : bfd_mach_riscv64) : bfd_mach_riscv32;
 	  bfd_find_target (riscv_target_format (), stdoutput);
 
 	  if (! bfd_set_arch_mach (stdoutput, bfd_arch_riscv, mach))
